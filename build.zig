@@ -127,5 +127,16 @@ pub fn build(b: *std.Build) void {
     const lasso_test_step = b.step("test-lasso", "Run Lasso lookup argument tests");
     lasso_test_step.dependOn(&run_lasso_tests.step);
 
+    // Phase 6: Polynomial commitment tests
+    const commit_tests = b.addTest(.{
+        .root_source_file = b.path("src/commitments/polynomial_commit.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    commit_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_commit_tests = b.addRunArtifact(commit_tests);
+    const commit_test_step = b.step("test-commit", "Run polynomial commitment tests");
+    commit_test_step.dependOn(&run_commit_tests.step);
+
     // Add more modular test steps as modules are implemented
 }

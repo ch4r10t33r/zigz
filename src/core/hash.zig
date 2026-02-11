@@ -78,30 +78,46 @@ pub const Poseidon2Hasher = hash_zig.poseidon2.Poseidon2;
 /// has very few constraints compared to traditional hash functions.
 ///
 /// Use this for all in-circuit hashing (Fiat-Shamir, commitments, etc.)
-pub fn hashFieldElementPoseidon2(comptime F: type, element: F) !Digest {
-    // Use Poseidon2 from hash-zig
-    // The exact API depends on hash-zig's implementation
-    // This is a placeholder that shows the intended usage
+pub fn hashFieldElementPoseidon2(comptime F: type, element: F) Digest {
+    // Poseidon2 operates on field elements natively
+    // Convert output to 32-byte digest for compatibility
 
-    // For now, fall back to SHA3 until we verify hash-zig API
-    // TODO: Integrate proper Poseidon2 from hash-zig
-    return hashFieldElementSHA3(F, element);
+    const field_size_bytes = @sizeOf(@TypeOf(element.value));
+    var result: Digest = [_]u8{0} ** 32;
+
+    // Use Poseidon2 from hash-zig
+    // Create a single-element array for hashing
+    const input = [_]u64{element.value};
+    const hash_output = Poseidon2Hasher.hash(&input, 1);
+
+    // Convert field element output to bytes
+    const bytes = std.mem.toBytes(hash_output);
+    @memcpy(result[0..field_size_bytes], bytes[0..field_size_bytes]);
+
+    return result;
 }
 
 /// Hash field elements using Poseidon2 (circuit-efficient)
-pub fn hashFieldElementsPoseidon2(comptime F: type, elements: []const F) !Digest {
-    // TODO: Implement using hash-zig's Poseidon2
-    // For now, fall back to SHA3
-    var hasher = std.crypto.hash.sha3.Sha3_256.init(.{});
+pub fn hashFieldElementsPoseidon2(comptime F: type, elements: []const F) Digest {
+    var result: Digest = [_]u8{0} ** 32;
 
-    for (elements) |element| {
-        const value = element.toInt();
-        const bytes = std.mem.toBytes(value);
-        hasher.update(&bytes);
+    // Convert field elements to u64 array for Poseidon2
+    const max_elements = 16; // Poseidon2 typical capacity
+    var values: [max_elements]u64 = undefined;
+
+    const num_elements = @min(elements.len, max_elements);
+    for (0..num_elements) |i| {
+        values[i] = elements[i].value;
     }
 
-    var result: Digest = undefined;
-    hasher.final(&result);
+    // Hash using Poseidon2
+    const hash_output = Poseidon2Hasher.hash(&values, num_elements);
+
+    // Convert to bytes
+    const field_size_bytes = @sizeOf(u64);
+    const bytes = std.mem.toBytes(hash_output);
+    @memcpy(result[0..field_size_bytes], bytes[0..field_size_bytes]);
+
     return result;
 }
 
@@ -160,17 +176,37 @@ pub fn hashFieldElements(comptime F: type, elements: []const F, allocator: std.m
     return result;
 }
 
-/// Hash two digests together (Merkle tree node combination)
+/// Hash two digests together using SHA3 (Merkle tree node combination)
 ///
 /// This is the fundamental operation for building Merkle trees over
 /// polynomial evaluations in our commitment scheme.
 pub fn mergeHashes(left: Digest, right: Digest) Digest {
+    return mergeHashesSHA3(left, right);
+}
+
+/// Hash two digests together using SHA3
+pub fn mergeHashesSHA3(left: Digest, right: Digest) Digest {
     var hasher = std.crypto.hash.sha3.Sha3_256.init(.{});
     hasher.update(&left);
     hasher.update(&right);
 
     var result: Digest = undefined;
     hasher.final(&result);
+    return result;
+}
+
+/// Hash two digests together using Poseidon2 (circuit-efficient)
+pub fn mergeHashesPoseidon2(left: Digest, right: Digest) Digest {
+    // Convert digests to u64 values (take first 8 bytes of each)
+    const left_val = std.mem.readInt(u64, left[0..8], .little);
+    const right_val = std.mem.readInt(u64, right[0..8], .little);
+
+    const input = [_]u64{ left_val, right_val };
+    const hash_output = Poseidon2Hasher.hash(&input, 2);
+
+    var result: Digest = [_]u8{0} ** 32;
+    const bytes = std.mem.toBytes(hash_output);
+    @memcpy(result[0..8], bytes[0..8]);
     return result;
 }
 
@@ -464,4 +500,75 @@ test "hash: Poseidon2 performance note" {
     // but the actual implementation will need benchmarking
 
     // TODO: Add proper benchmarks once Poseidon2 is integrated
+}
+
+// ============================================================================
+// Generic Hash Function Interface
+// ============================================================================
+
+/// Generic hash function interface for Merkle trees
+/// Allows swapping between SHA3 and Poseidon2
+pub fn GenericHasher(comptime hash_type: HashType) type {
+    return struct {
+        pub fn hashLeaf(comptime F: type, value: F) Digest {
+            return switch (hash_type) {
+                .SHA3_256 => hashFieldElementSHA3(F, value),
+                .Poseidon2 => hashFieldElementPoseidon2(F, value),
+            };
+        }
+
+        pub fn hashInternal(left: Digest, right: Digest) Digest {
+            return switch (hash_type) {
+                .SHA3_256 => mergeHashesSHA3(left, right),
+                .Poseidon2 => mergeHashesPoseidon2(left, right),
+            };
+        }
+
+        pub fn name() []const u8 {
+            return switch (hash_type) {
+                .SHA3_256 => "SHA3-256",
+                .Poseidon2 => "Poseidon2",
+            };
+        }
+    };
+}
+
+/// SHA3-256 hasher (for compatibility and external commitments)
+pub const SHA3Hasher = GenericHasher(.SHA3_256);
+
+/// Poseidon2 hasher (recommended for zkVM - circuit-efficient)
+pub const Poseidon2GenericHasher = GenericHasher(.Poseidon2);
+
+test "hash: generic hasher SHA3" {
+    const F = field.Field(u64, 17);
+    const Hasher = GenericHasher(.SHA3_256);
+
+    const element = F.init(42);
+    const digest = Hasher.hashLeaf(F, element);
+
+    try testing.expectEqual(@as(usize, 32), digest.len);
+    try testing.expectEqualStrings("SHA3-256", Hasher.name());
+}
+
+test "hash: generic hasher Poseidon2" {
+    const F = field.Field(u64, 17);
+    const Hasher = GenericHasher(.Poseidon2);
+
+    const element = F.init(42);
+    const digest = Hasher.hashLeaf(F, element);
+
+    try testing.expectEqual(@as(usize, 32), digest.len);
+    try testing.expectEqualStrings("Poseidon2", Hasher.name());
+}
+
+test "hash: SHA3 vs Poseidon2 produce different hashes" {
+    const F = field.Field(u64, 17);
+
+    const element = F.init(123);
+
+    const sha3_digest = SHA3Hasher.hashLeaf(F, element);
+    const p2_digest = Poseidon2GenericHasher.hashLeaf(F, element);
+
+    // Different hash functions should produce different outputs
+    try testing.expect(!std.mem.eql(u8, &sha3_digest, &p2_digest));
 }

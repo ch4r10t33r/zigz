@@ -1,0 +1,19 @@
+# Zig build output and cache
+zig-out/
+.zig-cache/
+zig-cache/
+
+# Editor and IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / env (optional)
+.env
+.env.local
+*.local

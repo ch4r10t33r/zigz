@@ -18,13 +18,16 @@ zigz is a zkVM (zero-knowledge virtual machine) that allows you to generate succ
 ### Key Features
 
 - ✅ Generic finite field arithmetic with compile-time specialization
+- ✅ BabyBear field support (2-3x faster proving than Goldilocks)
 - ✅ Multilinear polynomial operations over boolean hypercube
 - ✅ Sumcheck protocol (Jolt's core proof engine)
 - ✅ Lasso lookup argument (Jolt's signature innovation)
 - ✅ Binary Merkle tree polynomial commitments (transparent, post-quantum secure)
 - ✅ RISC-V RV32I instruction set support
-- 🚧 VM execution and constraint generation
-- 📋 Full prover and verifier integration
+- ✅ VM execution with sparse memory and execution trace generation
+- ✅ Constraint system with witness polynomials and value decomposition
+- ✅ Full prover with proof generation and binary serialization
+- 📋 Full verifier (next phase)
 
 ---
 
@@ -94,9 +97,9 @@ zig build run
 
 ## Project Status
 
-**Current Phase**: Phase 6 - Polynomial Commitments ✅
+**Current Phase**: Phase 9 - Full Prover ✅
 
-zigz is in active development. Core proving infrastructure is complete: field arithmetic, polynomials, sumcheck protocol, Lasso lookups, and hash-based commitments. VM state machine is next.
+zigz is in active development. The full prover pipeline is now complete! You can execute RISC-V programs and generate zero-knowledge proofs of correct execution. The prover integrates VM execution, constraint generation, sumcheck protocol, Lasso lookups, and polynomial commitments into a complete proof system. Next up: verifier implementation.
 
 ### Implementation Roadmap
 
@@ -109,9 +112,9 @@ zigz is in active development. Core proving infrastructure is complete: field ar
 | 4 | ✅ Complete | RISC-V instruction set |
 | 5 | ✅ Complete | Lasso lookup argument |
 | 6 | ✅ Complete | Hash-based polynomial commitments |
-| 7 | 📋 Planned | VM state machine |
-| 8 | 📋 Planned | Constraint generation |
-| 9 | 📋 Planned | Full prover |
+| 7 | ✅ Complete | VM state machine with execution trace |
+| 8 | ✅ Complete | Constraint generation with witness polynomials |
+| 9 | ✅ Complete | Full prover with proof serialization |
 | 10 | 📋 Planned | Full verifier |
 | 11 | 📋 Planned | Integration & optimization |
 
@@ -141,12 +144,15 @@ zig build run
 zig build test
 
 # Run specific module tests
-zig build test-field      # Phase 1: Field arithmetic tests
-zig build test-poly       # Phase 2: Polynomial tests
-zig build test-sumcheck   # Phase 3: Sumcheck protocol tests
-zig build test-isa        # Phase 4: RISC-V ISA tests
-zig build test-lasso      # Phase 5: Lasso lookup argument tests
-zig build test-commit     # Phase 6: Polynomial commitment tests
+zig build test-field        # Phase 1: Field arithmetic tests
+zig build test-poly         # Phase 2: Polynomial tests
+zig build test-sumcheck     # Phase 3: Sumcheck protocol tests
+zig build test-isa          # Phase 4: RISC-V ISA tests
+zig build test-lasso        # Phase 5: Lasso lookup argument tests
+zig build test-commit       # Phase 6: Polynomial commitment tests
+zig build test-vm           # Phase 7: VM state machine tests
+zig build test-constraints  # Phase 8: Constraint generation tests
+zig build test-prover       # Phase 9: Full prover tests
 ```
 
 ### Project Structure

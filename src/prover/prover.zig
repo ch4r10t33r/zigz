@@ -41,7 +41,6 @@ pub fn Prover(comptime F: type) type {
         transcript: hash.FiatShamirTranscript,
 
         pub fn init(allocator: std.mem.Allocator, seed: u64) !Self {
-            _ = allocator;
             var prng = std.Random.DefaultPrng.init(seed);
             const transcript = hash.FiatShamirTranscript.init();
 

@@ -153,13 +153,13 @@ pub fn CommitmentOpening(comptime F: type) type {
         value: F,
 
         /// Opening proof (Merkle authentication path)
-        proof: polynomial_commit.OpeningProof,
+        proof: polynomial_commit.OpeningProof(F),
 
         allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator, num_vars: usize) !Self {
             const point = try allocator.alloc(F, num_vars);
-            const proof = try polynomial_commit.OpeningProof.init(allocator);
+            const proof = try polynomial_commit.OpeningProof(F).init(allocator);
 
             return Self{
                 .commitment = undefined,

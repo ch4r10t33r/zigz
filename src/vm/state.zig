@@ -223,7 +223,9 @@ pub const VMState = struct {
 
     fn executeOPIMM(self: *Self, inst: rv64i.Instruction) !u64 {
         const rs1_val = self.regs.read(inst.rs1);
-        const imm = @as(u64, @bitCast(inst.imm));
+        // Sign-extend i32 immediate to i64, then bitcast to u64
+        const imm_i64: i64 = @intCast(inst.imm);
+        const imm = @as(u64, @bitCast(imm_i64));
 
         const result = switch (inst.funct3) {
             0b000 => rs1_val +% imm, // ADDI

@@ -42,7 +42,7 @@ pub fn LassoProof(comptime F: type) type {
         const Self = @This();
 
         pub fn init(
-            allocator: std.mem.Allocator,
+            _: std.mem.Allocator,
             sumcheck_p: sumcheck_protocol.SumcheckProof(F),
             query_com: [32]u8,
             table_com: [32]u8,
@@ -152,13 +152,13 @@ pub fn LassoProver(comptime F: type) type {
             // For this simplified version, we prove that the sum of queries
             // matches the sum of some subset of table entries
 
-            const query_sum = query_poly.sumOverHypercube();
+            _ = query_poly.sumOverHypercube();
 
             // Step 4: Run sumcheck on constraint polynomial
             // In full Lasso, this would be a more sophisticated constraint
             // Here we prove the simpler property for demonstration
 
-            var sumcheck_proof = try SumcheckProver.prove(query_poly, allocator);
+            const sumcheck_proof = try SumcheckProver.prove(query_poly, allocator);
 
             // Step 5: Commit to polynomials
             const query_commitment = commitToPolynomial(query_poly);

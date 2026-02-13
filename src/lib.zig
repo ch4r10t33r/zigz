@@ -26,3 +26,11 @@ pub const serialization = @import("prover/serialization.zig");
 pub const BabyBear = field_presets.BabyBear;
 pub const Goldilocks = field_presets.Goldilocks;
 pub const Decompose64to31 = decomposition.Decompose64to31;
+pub const VMState = vm_state.VMState;
+pub const WitnessGenerator = witness.WitnessGenerator;
+pub const ConstraintSystem = constraints.ConstraintSystem;
+pub const Prover = prover.Prover;
+
+// Legacy names for backward compatibility
+pub const prover_module = sumcheck_prover;
+pub const verifier_module = sumcheck_verifier;

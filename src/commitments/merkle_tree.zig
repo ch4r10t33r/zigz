@@ -230,10 +230,9 @@ pub fn MerkleTree(comptime F: type) type {
             // For simplicity, we traverse the tree
             // (In production, might cache intermediate hashes)
             _ = level_size;
-            _ = index;
             // Simplified: return zero hash for now
             // Full implementation would traverse tree to get actual hash
-            return hashLeaf(F, F.zero());
+            return hashLeaf(F, self.leaves[index]);
         }
 
         fn getValueAtIndex(self: Self, index: usize) !F {
@@ -248,9 +247,9 @@ pub fn MerkleTree(comptime F: type) type {
         fn hashLeaf(comptime T: type, value: T) Hash {
             var hasher = std.crypto.hash.sha3.Sha3_256.init(.{});
             hasher.update(std.mem.asBytes(&value.value));
-            var hash: Hash = undefined;
-            hasher.final(&hash);
-            return hash;
+            var leaf_hash: Hash = undefined;
+            hasher.final(&leaf_hash);
+            return leaf_hash;
         }
 
         /// Hash two internal nodes
@@ -258,9 +257,9 @@ pub fn MerkleTree(comptime F: type) type {
             var hasher = std.crypto.hash.sha3.Sha3_256.init(.{});
             hasher.update(&left);
             hasher.update(&right);
-            var hash: Hash = undefined;
-            hasher.final(&hash);
-            return hash;
+            var internal_hash: Hash = undefined;
+            hasher.final(&internal_hash);
+            return internal_hash;
         }
     };
 }
@@ -554,7 +553,7 @@ test "merkle_tree: proof size logarithmic" {
     const sizes = [_]usize{ 4, 8, 16, 32, 64 };
 
     for (sizes) |size| {
-        var values = try testing.allocator.alloc(F, size);
+        const values = try testing.allocator.alloc(F, size);
         defer testing.allocator.free(values);
 
         for (values, 0..) |*v, i| {

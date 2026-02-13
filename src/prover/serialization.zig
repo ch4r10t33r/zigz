@@ -69,7 +69,7 @@ pub fn BinarySerializer(comptime F: type) type {
         pub fn serialize(allocator: std.mem.Allocator, proof: Proof) ![]u8 {
             // Estimate total size
             const estimated_size = estimateSize(proof);
-            var buffer = try allocator.alloc(u8, estimated_size);
+            const buffer = try allocator.alloc(u8, estimated_size);
             errdefer allocator.free(buffer);
 
             var stream = std.io.fixedBufferStream(buffer);

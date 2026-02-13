@@ -37,22 +37,24 @@ pub fn Prover(comptime F: type) type {
         /// Random challenge generator (for Fiat-Shamir)
         rng: std.Random,
 
-        /// Hasher for Fiat-Shamir transform
-        hasher: hash.PoseidonHasher,
+        /// Fiat-Shamir transcript for challenge generation
+        transcript: hash.FiatShamirTranscript,
 
         pub fn init(allocator: std.mem.Allocator, seed: u64) !Self {
+            _ = allocator;
             var prng = std.Random.DefaultPrng.init(seed);
-            const hasher = try hash.PoseidonHasher.init(allocator);
+            const transcript = hash.FiatShamirTranscript.init();
 
             return Self{
                 .allocator = allocator,
                 .rng = prng.random(),
-                .hasher = hasher,
+                .transcript = transcript,
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.hasher.deinit();
+            // FiatShamirTranscript doesn't need cleanup
+            _ = self;
         }
 
         /// Generate a complete proof for a RISC-V program
@@ -197,13 +199,14 @@ pub fn Prover(comptime F: type) type {
             constraints: ConstraintSystem,
             witness: witness_gen.Witness(F),
         ) !void {
+            _ = constraints;
             // For now, create a placeholder sumcheck proof
             // In a complete implementation, this would:
             // 1. Combine all constraint polynomials into one multilinear polynomial
             // 2. Run the sumcheck prover on this combined polynomial
             // 3. Generate round polynomials and random challenges
 
-            const num_vars = witness.num_vars;
+            _ = witness.num_vars;
 
             // Generate random challenges (Fiat-Shamir)
             for (proof.constraint_proof.final_point, 0..) |*point, i| {

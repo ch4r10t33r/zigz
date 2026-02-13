@@ -23,6 +23,7 @@ pub const Commitment = [32]u8;
 
 /// Polynomial commitment
 pub fn PolynomialCommitment(comptime F: type) type {
+    _ = F;
     return struct {
         commitment: Commitment,
         num_vars: usize,
@@ -426,7 +427,7 @@ test "polynomial_commit: large polynomial" {
     const Multilinear = multilinear.Multilinear(F);
 
     // 256 evaluations (8 variables)
-    var evals = try testing.allocator.alloc(F, 256);
+    const evals = try testing.allocator.alloc(F, 256);
     defer testing.allocator.free(evals);
 
     for (evals, 0..) |*e, i| {

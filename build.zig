@@ -46,6 +46,8 @@ pub fn build(b: *std.Build) void {
         .{ "sumcheck_basic", "examples/sumcheck_basic.zig" },
         .{ "sumcheck_dishonest", "examples/sumcheck_dishonest.zig" },
         .{ "sumcheck_scalability", "examples/sumcheck_scalability.zig" },
+        .{ "babybear_demo", "examples/babybear_demo.zig" },
+        .{ "prover_demo", "examples/prover_demo.zig" },
     };
     inline for (example_sources) |entry| {
         const exe_name = entry.@"0";
@@ -126,6 +128,50 @@ pub fn build(b: *std.Build) void {
     const run_lasso_tests = b.addRunArtifact(lasso_tests);
     const lasso_test_step = b.step("test-lasso", "Run Lasso lookup argument tests");
     lasso_test_step.dependOn(&run_lasso_tests.step);
+
+    // Phase 6: Polynomial commitment tests
+    const commit_tests = b.addTest(.{
+        .root_source_file = b.path("src/commitments/polynomial_commit.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    commit_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_commit_tests = b.addRunArtifact(commit_tests);
+    const commit_test_step = b.step("test-commit", "Run polynomial commitment tests");
+    commit_test_step.dependOn(&run_commit_tests.step);
+
+    // Phase 7: VM state machine tests
+    const vm_tests = b.addTest(.{
+        .root_source_file = b.path("src/vm/state.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    vm_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_vm_tests = b.addRunArtifact(vm_tests);
+    const vm_test_step = b.step("test-vm", "Run VM state machine tests");
+    vm_test_step.dependOn(&run_vm_tests.step);
+
+    // Phase 8: Constraint generation tests
+    const constraint_tests = b.addTest(.{
+        .root_source_file = b.path("src/constraints/builder.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    constraint_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_constraint_tests = b.addRunArtifact(constraint_tests);
+    const constraint_test_step = b.step("test-constraints", "Run constraint generation tests");
+    constraint_test_step.dependOn(&run_constraint_tests.step);
+
+    // Phase 9: Full prover tests
+    const prover_tests = b.addTest(.{
+        .root_source_file = b.path("src/prover/prover.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    prover_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_prover_tests = b.addRunArtifact(prover_tests);
+    const prover_test_step = b.step("test-prover", "Run full prover tests");
+    prover_test_step.dependOn(&run_prover_tests.step);
 
     // Add more modular test steps as modules are implemented
 }

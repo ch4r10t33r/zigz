@@ -1,6 +1,36 @@
 /// Library root for zigz. Re-exports the public API used by examples and other consumers.
+
+// Core primitives
 pub const field = @import("core/field.zig");
 pub const field_presets = @import("core/field_presets.zig");
+pub const decomposition = @import("core/decomposition.zig");
+
+// Polynomial operations
 pub const multilinear = @import("poly/multilinear.zig");
-pub const prover_module = @import("proofs/sumcheck_prover.zig");
-pub const verifier_module = @import("proofs/sumcheck_verifier.zig");
+
+// Proof system
+pub const sumcheck_prover = @import("proofs/sumcheck_prover.zig");
+pub const sumcheck_verifier = @import("proofs/sumcheck_verifier.zig");
+
+// VM and constraints
+pub const vm_state = @import("vm/state.zig");
+pub const witness = @import("constraints/witness.zig");
+pub const constraints = @import("constraints/builder.zig");
+
+// Full prover
+pub const prover = @import("prover/prover.zig");
+pub const proof = @import("prover/proof.zig");
+pub const serialization = @import("prover/serialization.zig");
+
+// Convenience re-exports
+pub const BabyBear = field_presets.BabyBear;
+pub const Goldilocks = field_presets.Goldilocks;
+pub const Decompose64to31 = decomposition.Decompose64to31;
+pub const VMState = vm_state.VMState;
+pub const WitnessGenerator = witness.WitnessGenerator;
+pub const ConstraintSystem = constraints.ConstraintSystem;
+pub const Prover = prover.Prover;
+
+// Legacy names for backward compatibility
+pub const prover_module = sumcheck_prover;
+pub const verifier_module = sumcheck_verifier;

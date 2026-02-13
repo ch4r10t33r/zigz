@@ -1,5 +1,5 @@
 const std = @import("std");
-const rv32i = @import("rv32i.zig");
+const rv64i = @import("rv64i.zig");
 
 /// Instruction Lookup Table Metadata
 ///
@@ -44,11 +44,22 @@ pub const LookupTable = struct {
 
     /// Compute the total table size
     pub fn computeSize(input_widths: []const usize) usize {
-        var size: usize = 1;
+        var total_bits: usize = 0;
+        
+        // First, sum up all the bit widths
         for (input_widths) |width| {
-            size *= (@as(usize, 1) << @intCast(width));
+            total_bits += width;
         }
-        return size;
+        
+        // If total bits >= 64, the table size would overflow usize
+        // Return max usize to indicate infeasibility
+        if (total_bits >= 64) {
+            return std.math.maxInt(usize);
+        }
+        
+        // Now compute 2^total_bits
+        const shift_amount: u6 = @intCast(total_bits);
+        return @as(usize, 1) << shift_amount;
     }
 
     /// Check if table is feasible without decomposition
@@ -230,7 +241,7 @@ pub const InstructionTables = struct {
 };
 
 /// Get lookup table metadata for an instruction
-pub fn getTableMetadata(inst: rv32i.Instruction) ?LookupTable {
+pub fn getTableMetadata(inst: rv64i.Instruction) ?LookupTable {
     return switch (inst.opcode) {
         .OP => switch (inst.funct3) {
             0b000 => if (inst.funct7 == 0) InstructionTables.ADD else InstructionTables.SUB,
@@ -334,7 +345,7 @@ test "instruction_table: memory usage estimation" {
 test "instruction_table: get metadata for instruction" {
     // Decode an ADD instruction
     const word: u32 = 0b0000000_00011_00010_000_00001_0110011;
-    const inst = try rv32i.Instruction.decode(word);
+    const inst = try rv64i.Instruction.decode(word);
 
     const table = getTableMetadata(inst);
     try testing.expect(table != null);

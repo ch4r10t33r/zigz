@@ -3,6 +3,7 @@ const field = @import("../core/field.zig");
 const multilinear = @import("../poly/multilinear.zig");
 const sumcheck_protocol = @import("../proofs/sumcheck_protocol.zig");
 const polynomial_commit = @import("../commitments/polynomial_commit.zig");
+const merkle_tree = @import("../commitments/merkle_tree.zig");
 
 /// Proof Structure for zigz zkVM
 ///
@@ -159,20 +160,28 @@ pub fn CommitmentOpening(comptime F: type) type {
 
         pub fn init(allocator: std.mem.Allocator, num_vars: usize) !Self {
             const point = try allocator.alloc(F, num_vars);
-            const proof = try polynomial_commit.OpeningProof(F).init(allocator);
+            const empty_path = try merkle_tree.MerklePath.init(allocator, 0);
 
             return Self{
                 .commitment = undefined,
                 .point = point,
                 .value = F.zero(),
-                .proof = proof,
+                .proof = polynomial_commit.OpeningProof(F){
+                    .point = point,
+                    .value = F.zero(),
+                    .merkle_proof = merkle_tree.OpeningProof(F){
+                        .index = 0,
+                        .value = F.zero(),
+                        .path = empty_path,
+                    },
+                },
                 .allocator = allocator,
             };
         }
 
         pub fn deinit(self: *Self) void {
             self.allocator.free(self.point);
-            self.proof.deinit();
+            self.proof.deinit(self.allocator);
         }
     };
 }

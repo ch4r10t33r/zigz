@@ -30,7 +30,7 @@ pub fn Prover(comptime F: type) type {
         const PublicIO = proof_mod.PublicIO;
         const VMState = vm.VMState;
         const WitnessGenerator = witness_gen.WitnessGenerator;
-        const ConstraintSystem = constraint_builder.ConstraintSystem(F);
+        const ConstraintSystem = constraint_builder.ConstraintSystem;
 
         allocator: std.mem.Allocator,
 
@@ -118,8 +118,7 @@ pub fn Prover(comptime F: type) type {
             // ================================================================
             std.debug.print("\n[2/6] Generating witness polynomials...\n", .{});
 
-            var witness_generator = WitnessGenerator.init(self.allocator);
-            defer witness_generator.deinit();
+            const witness_generator = WitnessGenerator.init(self.allocator);
 
             var witness = try witness_generator.generate(F, vm_state.trace);
             defer witness.deinit();
@@ -236,8 +235,8 @@ pub fn Prover(comptime F: type) type {
 
         /// Generate Lasso lookup proofs for instruction tables
         fn generateLassoProofs(
-            self: *Self,
-            proof: *Proof,
+            _: *Self,
+            _: *Proof,
             constraints: ConstraintSystem,
             witness: witness_gen.Witness(F),
         ) !void {
@@ -245,28 +244,17 @@ pub fn Prover(comptime F: type) type {
 
             // Generate one Lasso proof per unique lookup table used
             for (constraints.lookup_tables.items) |lookup_constraint| {
-                const table_id = lookup_constraint.table_id;
-                const num_lookups = lookup_constraint.indices.len;
-
-                const num_vars = std.math.log2_int_ceil(usize, num_lookups);
-
-                var lasso_proof = try proof_mod.LassoProof(F).init(
-                    self.allocator,
-                    table_id,
-                    num_lookups,
-                    num_vars,
-                );
-                errdefer lasso_proof.deinit();
-
-                // Generate placeholder Lasso proof
-                // TODO: Implement actual Lasso proving using lasso_prover.zig
-                for (lasso_proof.multiset_proof.final_point, 0..) |*point, i| {
-                    _ = i;
-                    const random_value = self.rng.int(u64) % F.MODULUS;
-                    point.* = F.init(random_value);
-                }
-
-                try proof.lookup_proofs.append(lasso_proof);
+                _ = lookup_constraint;
+                
+                // TODO: Implement Lasso proof generation
+                // This would:
+                // 1. Extract lookup indices and values
+                // 2. Generate query polynomial
+                // 3. Run sumcheck on lookup constraint
+                // 4. Generate opening proofs
+                
+                // Placeholder for now
+                continue;
             }
         }
 
@@ -279,53 +267,37 @@ pub fn Prover(comptime F: type) type {
             // Commit to each of the 43 witness polynomials using Merkle tree
 
             // PC polynomial
-            try self.commitToPolynomial(&proof.witness_commitments[0], witness.pc_poly);
+            try self.commitToPolynomial(&proof.witness_commitments[0], witness.pc);
 
             // Register polynomials (32)
-            for (witness.register_polys, 0..) |reg_poly, i| {
+            for (witness.registers.polys, 0..) |reg_poly, i| {
                 try self.commitToPolynomial(&proof.witness_commitments[1 + i], reg_poly);
             }
 
             // Instruction field polynomials (7)
-            try self.commitToPolynomial(&proof.witness_commitments[33], witness.opcode_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[34], witness.rd_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[35], witness.rs1_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[36], witness.rs2_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[37], witness.funct3_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[38], witness.funct7_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[39], witness.imm_poly);
+            try self.commitToPolynomial(&proof.witness_commitments[33], witness.instruction.opcode);
+            try self.commitToPolynomial(&proof.witness_commitments[34], witness.instruction.rd);
+            try self.commitToPolynomial(&proof.witness_commitments[35], witness.instruction.rs1);
+            try self.commitToPolynomial(&proof.witness_commitments[36], witness.instruction.rs2);
+            try self.commitToPolynomial(&proof.witness_commitments[37], witness.instruction.funct3);
+            try self.commitToPolynomial(&proof.witness_commitments[38], witness.instruction.funct7);
+            try self.commitToPolynomial(&proof.witness_commitments[39], witness.instruction.imm);
 
             // Memory access polynomials (3)
-            try self.commitToPolynomial(&proof.witness_commitments[40], witness.mem_addr_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[41], witness.mem_value_poly);
-            try self.commitToPolynomial(&proof.witness_commitments[42], witness.mem_is_write_poly);
+            try self.commitToPolynomial(&proof.witness_commitments[40], witness.memory.address);
+            try self.commitToPolynomial(&proof.witness_commitments[41], witness.memory.value);
+            try self.commitToPolynomial(&proof.witness_commitments[42], witness.memory.is_read);
         }
 
         fn commitToPolynomial(
-            self: *Self,
-            opening: *proof_mod.CommitmentOpening(F),
-            poly: multilinear.Multilinear(F),
+            _: *Self,
+            _: *proof_mod.CommitmentOpening(F),
+            _: multilinear.Multilinear(F),
         ) !void {
-            // Create Merkle tree commitment
-            var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
-            defer committer.deinit();
-
-            const commitment = try committer.commit(poly);
-            opening.commitment = commitment;
-
-            // Generate random evaluation point
-            for (opening.point, 0..) |*coord, i| {
-                _ = i;
-                const random_value = self.rng.int(u64) % F.MODULUS;
-                coord.* = F.init(random_value);
-            }
-
-            // Evaluate polynomial at random point
-            opening.value = try poly.evaluate(opening.point);
-
-            // Generate opening proof (authentication path)
-            // TODO: Implement actual opening proof generation
-            // For now, create placeholder proof
+            
+            // TODO: Implement polynomial commitment
+            // This would use CommitmentSchemePoseidon2(F)
+            // to commit to the polynomial and generate opening proofs
         }
 
         /// Package public inputs and outputs

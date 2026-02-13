@@ -165,7 +165,7 @@ pub const WitnessGenerator = struct {
             rd_evals[i] = F.init(inst.rd);
             rs1_evals[i] = F.init(inst.rs1);
             rs2_evals[i] = F.init(inst.rs2);
-            imm_evals[i] = F.init(@bitCast(inst.imm));
+            imm_evals[i] = F.init(@as(u64, @bitCast(@as(i64, inst.imm))));
         }
 
         // Pad with zeros

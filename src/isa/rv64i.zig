@@ -55,7 +55,7 @@ pub const Opcode = enum(u7) {
     SYSTEM = 0b1110011,
 
     /// Get the instruction format for this opcode
-    pub fn format(self: Opcode) InstructionFormat {
+    pub fn getFormat(self: Opcode) InstructionFormat {
         return switch (self) {
             .OP, .OP_32 => .R,
             .OP_IMM, .OP_IMM_32, .JALR, .LOAD, .MISC_MEM, .SYSTEM => .I,
@@ -148,7 +148,7 @@ pub const Instruction = struct {
             return error.InvalidOpcode;
         };
 
-        const format = opcode.format();
+        const format = opcode.getFormat();
 
         // Extract common fields
         const rd = @as(u5, @truncate((word >> 7) & 0x1F));

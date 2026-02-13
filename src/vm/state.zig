@@ -252,7 +252,7 @@ pub const VMState = struct {
     fn executeOPIMM32(self: *Self, inst: rv64i.Instruction) !u64 {
         // RV64I: Word immediate operations
         const rs1_val = @as(u32, @truncate(self.regs.read(inst.rs1)));
-        const imm = @as(u32, @truncate(@as(u64, @bitCast(inst.imm))));
+        const imm: u32 = @bitCast(inst.imm);
 
         const result32 = switch (inst.funct3) {
             0b000 => rs1_val +% imm, // ADDIW
@@ -276,7 +276,7 @@ pub const VMState = struct {
 
     fn executeLOAD(self: *Self, inst: rv64i.Instruction, mem_access: *?MemoryAccess) !u64 {
         const base = self.regs.read(inst.rs1);
-        const addr = base +% @as(u64, @bitCast(inst.imm));
+        const addr = base +% @as(u64, @bitCast(@as(i64, inst.imm)));
 
         const result: u64 = switch (inst.funct3) {
             0b000 => @bitCast(self.memory.loadSignExtended(addr, .Byte)), // LB
@@ -308,7 +308,7 @@ pub const VMState = struct {
 
     fn executeSTORE(self: *Self, inst: rv64i.Instruction, mem_access: *?MemoryAccess) !u64 {
         const base = self.regs.read(inst.rs1);
-        const addr = base +% @as(u64, @bitCast(inst.imm));
+        const addr = base +% @as(u64, @bitCast(@as(i64, inst.imm)));
         const value = self.regs.read(inst.rs2);
 
         const size: LoadSize = switch (inst.funct3) {
@@ -346,7 +346,7 @@ pub const VMState = struct {
         };
 
         if (branch_taken) {
-            return self.pc +% @as(u64, @bitCast(inst.imm));
+            return self.pc +% @as(u64, @bitCast(@as(i64, inst.imm)));
         } else {
             return self.pc + 4;
         }
@@ -357,7 +357,7 @@ pub const VMState = struct {
         self.regs.write(inst.rd, self.pc + 4);
 
         // Jump to target
-        return self.pc +% @as(u64, @bitCast(inst.imm));
+        return self.pc +% @as(u64, @bitCast(@as(i64, inst.imm)));
     }
 
     fn executeJALR(self: *Self, inst: rv64i.Instruction) !u64 {
@@ -367,7 +367,7 @@ pub const VMState = struct {
         self.regs.write(inst.rd, self.pc + 4);
 
         // Jump to (base + imm) & ~1 (clear lowest bit)
-        const target = (base +% @as(u64, @bitCast(inst.imm))) & ~@as(u64, 1);
+        const target = (base +% @as(u64, @bitCast(@as(i64, inst.imm)))) & ~@as(u64, 1);
         return target;
     }
 
@@ -375,13 +375,13 @@ pub const VMState = struct {
         // Load Upper Immediate
         // LUI places the 20-bit immediate in bits [31:12] and zeros the lower 12 bits
         // Sign-extend to 64 bits for RV64I
-        self.regs.write(inst.rd, @bitCast(inst.imm));
+        self.regs.write(inst.rd, @as(u64, @bitCast(@as(i64, inst.imm))));
         return self.pc + 4;
     }
 
     fn executeAUIPC(self: *Self, inst: rv64i.Instruction) !u64 {
         // Add Upper Immediate to PC
-        const result = self.pc +% @as(u64, @bitCast(inst.imm));
+        const result = self.pc +% @as(u64, @bitCast(@as(i64, inst.imm)));
         self.regs.write(inst.rd, result);
         return self.pc + 4;
     }

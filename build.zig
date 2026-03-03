@@ -5,12 +5,9 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // -- hash-zig dependency (fields + poseidon2) --
-    // After running: zig fetch --save git+https://github.com/blockblaz/hash-zig
-    // uncomment the lines below and adjust the module name if needed.
-    //
     const hash_zig_dep = b.dependency("hash_zig", .{
-         .target = target,
-         .optimize = optimize,
+        .target = target,
+        .optimize = optimize,
     });
     const hash_zig_mod = hash_zig_dep.module("hash-zig");
 
@@ -48,6 +45,7 @@ pub fn build(b: *std.Build) void {
         .{ "sumcheck_scalability", "examples/sumcheck_scalability.zig" },
         .{ "babybear_demo", "examples/babybear_demo.zig" },
         .{ "prover_demo", "examples/prover_demo.zig" },
+        .{ "prover_verifier_demo", "examples/prover_verifier_demo.zig" },
     };
     inline for (example_sources) |entry| {
         const exe_name = entry.@"0";
@@ -173,5 +171,29 @@ pub fn build(b: *std.Build) void {
     const prover_test_step = b.step("test-prover", "Run full prover tests");
     prover_test_step.dependOn(&run_prover_tests.step);
 
-    // Add more modular test steps as modules are implemented
+    // Phase 10: Full verifier tests
+    const verifier_tests = b.addTest(.{
+        .root_source_file = b.path("src/verifier/verifier.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    verifier_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_verifier_tests = b.addRunArtifact(verifier_tests);
+    const verifier_test_step = b.step("test-verifier", "Run full verifier tests");
+    verifier_test_step.dependOn(&run_verifier_tests.step);
+
+    // Verifier benchmarks
+    const verifier_bench = b.addExecutable(.{
+        .name = "verifier_bench",
+        .root_source_file = b.path("src/verifier/benchmarks.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    verifier_bench.root_module.addImport("hash-zig", hash_zig_mod);
+    b.installArtifact(verifier_bench);
+
+    const run_verifier_bench = b.addRunArtifact(verifier_bench);
+    run_verifier_bench.step.dependOn(b.getInstallStep());
+    const bench_step = b.step("bench", "Run verifier benchmarks");
+    bench_step.dependOn(&run_verifier_bench.step);
 }

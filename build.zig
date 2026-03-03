@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
     // -- main executable (for experimentation / demos) --
     const exe = b.addExecutable(.{
         .name = "zigz",
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
     // -- zigz library module (for examples; uses path-based imports under src/) --
     const zigz_lib = b.addStaticLibrary(.{
         .name = "zigz",
-        .root_source_file = b.path("src/lib.zig"),
+        .root_source_file = .{ .cwd_relative = "src/lib.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -54,7 +54,7 @@ pub fn build(b: *std.Build) void {
         const exe_path = entry.@"1";
         const example_exe = b.addExecutable(.{
             .name = exe_name,
-            .root_source_file = b.path(exe_path),
+            .root_source_file = .{ .cwd_relative = exe_path },
             .target = target,
             .optimize = optimize,
         });
@@ -64,7 +64,7 @@ pub fn build(b: *std.Build) void {
 
     // -- tests --
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -76,7 +76,7 @@ pub fn build(b: *std.Build) void {
     // -- modular tests (for testing individual components) --
     // Phase 1: Field arithmetic tests
     const field_tests = b.addTest(.{
-        .root_source_file = b.path("src/core/field.zig"),
+        .root_source_file = .{ .cwd_relative = "src/core/field.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -87,7 +87,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 2: Polynomial tests
     const poly_tests = b.addTest(.{
-        .root_source_file = b.path("src/poly/multilinear.zig"),
+        .root_source_file = .{ .cwd_relative = "src/poly/multilinear.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -98,7 +98,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 3: Sumcheck protocol tests
     const sumcheck_tests = b.addTest(.{
-        .root_source_file = b.path("src/proofs/sumcheck_prover.zig"),
+        .root_source_file = .{ .cwd_relative = "src/proofs/sumcheck_prover.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -109,7 +109,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 4: ISA tests
     const isa_tests = b.addTest(.{
-        .root_source_file = b.path("src/isa/rv32i.zig"),
+        .root_source_file = .{ .cwd_relative = "src/isa/rv32i.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -120,7 +120,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 5: Lasso lookup argument tests
     const lasso_tests = b.addTest(.{
-        .root_source_file = b.path("src/lookups/lasso_prover.zig"),
+        .root_source_file = .{ .cwd_relative = "src/lookups/lasso_prover.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -131,7 +131,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 6: Polynomial commitment tests
     const commit_tests = b.addTest(.{
-        .root_source_file = b.path("src/commitments/polynomial_commit.zig"),
+        .root_source_file = .{ .cwd_relative = "src/commitments/polynomial_commit.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -142,7 +142,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 7: VM state machine tests
     const vm_tests = b.addTest(.{
-        .root_source_file = b.path("src/vm/state.zig"),
+        .root_source_file = .{ .cwd_relative = "src/vm/state.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -153,7 +153,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 8: Constraint generation tests
     const constraint_tests = b.addTest(.{
-        .root_source_file = b.path("src/constraints/builder.zig"),
+        .root_source_file = .{ .cwd_relative = "src/constraints/builder.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -164,7 +164,7 @@ pub fn build(b: *std.Build) void {
 
     // Phase 9: Full prover tests
     const prover_tests = b.addTest(.{
-        .root_source_file = b.path("src/prover/prover.zig"),
+        .root_source_file = .{ .cwd_relative = "src/prover/prover.zig" },
         .target = target,
         .optimize = optimize,
     });

@@ -42,6 +42,8 @@ pub fn Prover(comptime F: type) type {
 
         pub fn init(allocator: std.mem.Allocator, seed: u64) !Self {
             var prng = std.Random.DefaultPrng.init(seed);
+            // Note: transcript is initialized fresh for each proof in prove()
+            // to prevent state leakage between proofs
             const transcript = hash.FiatShamirTranscript.init();
 
             return Self{
@@ -76,6 +78,31 @@ pub fn Prover(comptime F: type) type {
             std.debug.print("Field: {s} (modulus = {d})\n", .{ @typeName(F), F.MODULUS });
             std.debug.print("Program size: {d} bytes\n", .{program.len});
             std.debug.print("Entry PC: 0x{x}\n", .{entry_pc});
+
+            // ================================================================
+            // SECURITY: Initialize fresh Fiat-Shamir transcript for this proof
+            // ================================================================
+            // This prevents state leakage between different proof generations
+            self.transcript = hash.FiatShamirTranscript.init();
+
+            // CRITICAL: Bind all public inputs to transcript FIRST
+            // This prevents "unfaithful claims" vulnerability where prover
+            // could generate proofs for different programs with same challenges
+
+            // Bind program hash
+            var program_hash: [32]u8 = undefined;
+            std.crypto.hash.sha2.Sha256.hash(program, &program_hash, .{});
+            self.transcript.appendBytes(&program_hash);
+
+            // Bind entry PC
+            self.transcript.appendFieldElement(F, F.init(entry_pc));
+
+            // Bind initial registers if provided
+            if (initial_regs) |regs| {
+                for (regs) |reg_val| {
+                    self.transcript.appendFieldElement(F, F.init(reg_val));
+                }
+            }
 
             // ================================================================
             // STEP 1: Execute program and record trace
@@ -212,11 +239,14 @@ pub fn Prover(comptime F: type) type {
             // In practice, C(x) = sum_j α_j * constraint_j(x)
             // where α_j are random coefficients from Fiat-Shamir
 
-            // For this implementation, we use a simplified approach:
-            // Generate random round polynomials that satisfy the sumcheck verifier
+            // SECURITY: Domain separation for sumcheck protocol
+            // This prevents cross-protocol attacks where challenges from one
+            // protocol component could be reused in another
+            self.transcript.appendBytes("SUMCHECK_BEGIN");
 
-            // Update Fiat-Shamir transcript with witness commitment
+            // Bind witness metadata to transcript
             self.transcript.appendFieldElement(F, F.init(witness.num_steps));
+            self.transcript.appendFieldElement(F, F.init(num_vars));
 
             // Generate verifier challenges for each round
             var challenges = try self.allocator.alloc(F, num_vars);
@@ -262,12 +292,20 @@ pub fn Prover(comptime F: type) type {
             constraints: ConstraintSystem,
             witness: witness_gen.Witness(F),
         ) !void {
+            // SECURITY: Domain separation for Lasso lookup arguments
+            self.transcript.appendBytes("LASSO_BEGIN");
+
             // Generate one Lasso proof per unique lookup table used
             for (constraints.lookup_tables.items) |lookup_constraint| {
                 const table_id = lookup_constraint.table_id;
                 const num_lookups = lookup_constraint.indices.len;
 
                 if (num_lookups == 0) continue;
+
+                // SECURITY: Bind table_id to transcript for domain separation
+                // Each lookup table gets its own challenge space
+                self.transcript.appendBytes("LASSO_TABLE");
+                self.transcript.appendFieldElement(F, F.init(table_id));
 
                 const num_vars = std.math.log2_int_ceil(usize, num_lookups);
 
@@ -326,29 +364,53 @@ pub fn Prover(comptime F: type) type {
             proof: *Proof,
             witness: witness_gen.Witness(F),
         ) !void {
-            // Commit to each of the 43 witness polynomials using Merkle tree
+            // SECURITY: Two-phase commitment to prevent Fiat-Shamir manipulation
+            // Phase 1: Generate all Merkle tree commitments
+            // Phase 2: Bind all commitments to transcript, THEN derive opening challenges
 
-            // PC polynomial
-            try self.commitToPolynomial(&proof.witness_commitments[0], witness.pc);
+            // PHASE 1: Generate commitments (Merkle roots only)
+            const polynomials = [_]multilinear.Multilinear(F){
+                witness.pc, // 0
+            } ++ witness.registers.polys ++ // 1-32
+                [_]multilinear.Multilinear(F){
+                witness.instruction.opcode, // 33
+                witness.instruction.rd, // 34
+                witness.instruction.rs1, // 35
+                witness.instruction.rs2, // 36
+                witness.instruction.funct3, // 37
+                witness.instruction.funct7, // 38
+                witness.instruction.imm, // 39
+                witness.memory.address, // 40
+                witness.memory.value, // 41
+                witness.memory.is_read, // 42
+            };
 
-            // Register polynomials (32)
-            for (witness.registers.polys, 0..) |reg_poly, i| {
-                try self.commitToPolynomial(&proof.witness_commitments[1 + i], reg_poly);
+            // Commit to all 43 polynomials
+            for (polynomials, 0..) |poly, i| {
+                var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
+                defer committer.deinit();
+
+                const commitment = try committer.commit(poly);
+                proof.witness_commitments[i].commitment = commitment;
             }
 
-            // Instruction field polynomials (7)
-            try self.commitToPolynomial(&proof.witness_commitments[33], witness.instruction.opcode);
-            try self.commitToPolynomial(&proof.witness_commitments[34], witness.instruction.rd);
-            try self.commitToPolynomial(&proof.witness_commitments[35], witness.instruction.rs1);
-            try self.commitToPolynomial(&proof.witness_commitments[36], witness.instruction.rs2);
-            try self.commitToPolynomial(&proof.witness_commitments[37], witness.instruction.funct3);
-            try self.commitToPolynomial(&proof.witness_commitments[38], witness.instruction.funct7);
-            try self.commitToPolynomial(&proof.witness_commitments[39], witness.instruction.imm);
+            // PHASE 2: Bind all commitments to transcript (CRITICAL!)
+            self.transcript.appendBytes("POLY_COMMITMENTS");
+            for (proof.witness_commitments) |commitment| {
+                self.transcript.appendBytes(&commitment.commitment);
+            }
 
-            // Memory access polynomials (3)
-            try self.commitToPolynomial(&proof.witness_commitments[40], witness.memory.address);
-            try self.commitToPolynomial(&proof.witness_commitments[41], witness.memory.value);
-            try self.commitToPolynomial(&proof.witness_commitments[42], witness.memory.is_read);
+            // PHASE 3: Derive opening challenges from transcript
+            // Now that all commitments are bound, derive evaluation points
+            for (polynomials, 0..) |poly, i| {
+                for (proof.witness_commitments[i].point, 0..) |*coord, j| {
+                    _ = j;
+                    coord.* = self.transcript.challenge(F);
+                }
+
+                // Evaluate polynomial at challenge point
+                proof.witness_commitments[i].value = try poly.evaluate(proof.witness_commitments[i].point);
+            }
         }
 
         fn commitToPolynomial(
@@ -364,15 +426,19 @@ pub fn Prover(comptime F: type) type {
             const commitment = try committer.commit(poly);
             opening.commitment = commitment;
 
-            // Generate random evaluation point for this polynomial
-            // In a real system, this would come from Fiat-Shamir challenge
+            // SECURITY FIX: Derive evaluation point from Fiat-Shamir transcript
+            // NOT from independent random generator
+            // This ensures challenges depend on all prior proof data
+            //
+            // The commitment must be in the transcript before deriving the challenge
+            // (this happens in generateCommitments which binds all commitments first)
             for (opening.point, 0..) |*coord, i| {
                 _ = i;
-                const random_value = self.rng.int(u64) % F.MODULUS;
-                coord.* = F.init(random_value);
+                // Derive coordinate from transcript (deterministic)
+                coord.* = self.transcript.challenge(F);
             }
 
-            // Evaluate polynomial at the random point
+            // Evaluate polynomial at the challenge point
             opening.value = try poly.evaluate(opening.point);
 
             // Generate opening proof (Merkle authentication path)

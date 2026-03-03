@@ -71,7 +71,7 @@ See [MODULES.md](MODULES.md) for detailed architecture documentation.
 
 ### Prerequisites
 
-- Zig 0.14.0 or later
+- Zig 0.14.1
 - Git (for dependency management)
 
 ### Installation

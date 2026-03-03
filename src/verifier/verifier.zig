@@ -278,7 +278,7 @@ pub fn Verifier(comptime F: type) type {
             // Derive evaluation point from transcript (must match prover)
             // The prover derived these challenges after binding all commitments
             // We must derive them in the same order
-            var expected_point = try self.allocator.alloc(F, opening.point.len);
+            const expected_point = try self.allocator.alloc(F, opening.point.len);
             defer self.allocator.free(expected_point);
 
             for (expected_point) |*coord| {
@@ -340,7 +340,7 @@ test "verifier: public input binding order" {
     defer verifier.deinit();
 
     // Create test public IO
-    var public_io = proof_mod.PublicIO{
+    const public_io = proof_mod.PublicIO{
         .program_hash = [_]u8{0x42} ** 32,
         .initial_pc = 0x1000,
         .initial_regs = null,

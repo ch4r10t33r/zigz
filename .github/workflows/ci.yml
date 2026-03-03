@@ -25,7 +25,9 @@ jobs:
         version: 0.14.1
 
     - name: Verify Zig installation
-      run: zig version
+      run: |
+        zig version
+        [ "$(zig version | cut -d' ' -f1)" = "0.14.1" ] || { echo "Expected Zig 0.14.1"; exit 1; }
 
     - name: Build project
       run: zig build

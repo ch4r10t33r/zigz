@@ -295,10 +295,11 @@ pub fn Prover(comptime F: type) type {
             // SECURITY: Domain separation for Lasso lookup arguments
             self.transcript.appendBytes("LASSO_BEGIN");
 
-            // Generate one Lasso proof per unique lookup table used
-            for (constraints.lookup_tables.items) |lookup_constraint| {
-                const table_id = lookup_constraint.table_id;
-                const num_lookups = lookup_constraint.indices.len;
+            // Generate one Lasso proof per lookup constraint (each is one table lookup)
+            for (constraints.lookup_tables.items, 0..) |lookup_constraint, index| {
+                _ = lookup_constraint;
+                const table_id = @intCast(u64, index);
+                const num_lookups = 1;
 
                 if (num_lookups == 0) continue;
 

@@ -53,7 +53,7 @@ pub fn main() !void {
 
     std.debug.print("Step 2: Generating proof...\n", .{});
 
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     const start_time = std.time.milliTimestamp();

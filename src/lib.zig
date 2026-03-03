@@ -22,6 +22,10 @@ pub const prover = @import("prover/prover.zig");
 pub const proof = @import("prover/proof.zig");
 pub const serialization = @import("prover/serialization.zig");
 
+// Full verifier
+pub const verifier = @import("verifier/verifier.zig");
+pub const benchmarks = @import("verifier/benchmarks.zig");
+
 // Convenience re-exports
 pub const BabyBear = field_presets.BabyBear;
 pub const Goldilocks = field_presets.Goldilocks;
@@ -30,6 +34,7 @@ pub const VMState = vm_state.VMState;
 pub const WitnessGenerator = witness.WitnessGenerator;
 pub const ConstraintSystem = constraints.ConstraintSystem;
 pub const Prover = prover.Prover;
+pub const Verifier = verifier.Verifier;
 
 // Legacy names for backward compatibility
 pub const prover_module = sumcheck_prover;

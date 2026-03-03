@@ -196,4 +196,31 @@ pub fn build(b: *std.Build) void {
     run_verifier_bench.step.dependOn(b.getInstallStep());
     const bench_step = b.step("bench", "Run verifier benchmarks");
     bench_step.dependOn(&run_verifier_bench.step);
+
+    // Integration tests (end-to-end prover-verifier)
+    const integration_tests = b.addTest(.{
+        .root_source_file = b.path("tests/integration_tests.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    integration_tests.root_module.addImport("zigz", zigz_lib.root_module);
+    integration_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+    const integration_test_step = b.step("test-integration", "Run integration tests");
+    integration_test_step.dependOn(&run_integration_tests.step);
+
+    // Comprehensive test step (runs all tests)
+    const all_tests_step = b.step("test-all", "Run all tests");
+    all_tests_step.dependOn(test_step);
+    all_tests_step.dependOn(field_test_step);
+    all_tests_step.dependOn(poly_test_step);
+    all_tests_step.dependOn(sumcheck_test_step);
+    all_tests_step.dependOn(isa_test_step);
+    all_tests_step.dependOn(lasso_test_step);
+    all_tests_step.dependOn(commit_test_step);
+    all_tests_step.dependOn(vm_test_step);
+    all_tests_step.dependOn(constraint_test_step);
+    all_tests_step.dependOn(prover_test_step);
+    all_tests_step.dependOn(verifier_test_step);
+    all_tests_step.dependOn(integration_test_step);
 }

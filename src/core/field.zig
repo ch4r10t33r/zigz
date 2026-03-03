@@ -193,7 +193,10 @@ pub fn Field(comptime T: type, comptime modulus: T) type {
         /// Field division: a / b = a * b^(-1) mod p
         /// Returns error.DivisionByZero if divisor is zero
         pub fn div(self: Self, other: Self) !Self {
-            const inv_other = try other.inv();
+            const inv_other = other.inv() catch |err| {
+                if (other.isZero()) return error.DivisionByZero;
+                return err;
+            };
             return self.mul(inv_other);
         }
 

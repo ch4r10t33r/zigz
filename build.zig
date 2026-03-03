@@ -17,10 +17,10 @@ pub fn build(b: *std.Build) void {
     // -- main executable (for experimentation / demos) --
     const exe = b.addExecutable(.{
         .name = "zigz",
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
+    exe.root_module.addRootSourceFile(b.path("src/main.zig"));
     exe.root_module.addImport("hash-zig", hash_zig_mod);
     b.installArtifact(exe);
 
@@ -35,10 +35,10 @@ pub fn build(b: *std.Build) void {
     // -- zigz library module (for examples; uses path-based imports under src/) --
     const zigz_lib = b.addStaticLibrary(.{
         .name = "zigz",
-        .root_source_file = .{ .cwd_relative = "src/lib.zig" },
         .target = target,
         .optimize = optimize,
     });
+    zigz_lib.root_module.addRootSourceFile(b.path("src/lib.zig"));
     zigz_lib.root_module.addImport("hash-zig", hash_zig_mod);
 
     // -- example executables --
@@ -54,20 +54,20 @@ pub fn build(b: *std.Build) void {
         const exe_path = entry.@"1";
         const example_exe = b.addExecutable(.{
             .name = exe_name,
-            .root_source_file = .{ .cwd_relative = exe_path },
             .target = target,
             .optimize = optimize,
         });
+        example_exe.root_module.addRootSourceFile(b.path(exe_path));
         example_exe.root_module.addImport("zigz", zigz_lib.root_module);
         b.installArtifact(example_exe);
     }
 
     // -- tests --
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
+    unit_tests.root_module.addRootSourceFile(b.path("src/main.zig"));
     unit_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run unit tests");
@@ -76,10 +76,10 @@ pub fn build(b: *std.Build) void {
     // -- modular tests (for testing individual components) --
     // Phase 1: Field arithmetic tests
     const field_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/core/field.zig" },
         .target = target,
         .optimize = optimize,
     });
+    field_tests.root_module.addRootSourceFile(b.path("src/core/field.zig"));
     field_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_field_tests = b.addRunArtifact(field_tests);
     const field_test_step = b.step("test-field", "Run field arithmetic tests");
@@ -87,10 +87,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 2: Polynomial tests
     const poly_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/poly/multilinear.zig" },
         .target = target,
         .optimize = optimize,
     });
+    poly_tests.root_module.addRootSourceFile(b.path("src/poly/multilinear.zig"));
     poly_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_poly_tests = b.addRunArtifact(poly_tests);
     const poly_test_step = b.step("test-poly", "Run polynomial tests");
@@ -98,10 +98,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 3: Sumcheck protocol tests
     const sumcheck_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/proofs/sumcheck_prover.zig" },
         .target = target,
         .optimize = optimize,
     });
+    sumcheck_tests.root_module.addRootSourceFile(b.path("src/proofs/sumcheck_prover.zig"));
     sumcheck_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_sumcheck_tests = b.addRunArtifact(sumcheck_tests);
     const sumcheck_test_step = b.step("test-sumcheck", "Run sumcheck protocol tests");
@@ -109,10 +109,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 4: ISA tests
     const isa_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/isa/rv32i.zig" },
         .target = target,
         .optimize = optimize,
     });
+    isa_tests.root_module.addRootSourceFile(b.path("src/isa/rv32i.zig"));
     isa_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_isa_tests = b.addRunArtifact(isa_tests);
     const isa_test_step = b.step("test-isa", "Run RISC-V ISA tests");
@@ -120,10 +120,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 5: Lasso lookup argument tests
     const lasso_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/lookups/lasso_prover.zig" },
         .target = target,
         .optimize = optimize,
     });
+    lasso_tests.root_module.addRootSourceFile(b.path("src/lookups/lasso_prover.zig"));
     lasso_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_lasso_tests = b.addRunArtifact(lasso_tests);
     const lasso_test_step = b.step("test-lasso", "Run Lasso lookup argument tests");
@@ -131,10 +131,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 6: Polynomial commitment tests
     const commit_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/commitments/polynomial_commit.zig" },
         .target = target,
         .optimize = optimize,
     });
+    commit_tests.root_module.addRootSourceFile(b.path("src/commitments/polynomial_commit.zig"));
     commit_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_commit_tests = b.addRunArtifact(commit_tests);
     const commit_test_step = b.step("test-commit", "Run polynomial commitment tests");
@@ -142,10 +142,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 7: VM state machine tests
     const vm_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/vm/state.zig" },
         .target = target,
         .optimize = optimize,
     });
+    vm_tests.root_module.addRootSourceFile(b.path("src/vm/state.zig"));
     vm_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_vm_tests = b.addRunArtifact(vm_tests);
     const vm_test_step = b.step("test-vm", "Run VM state machine tests");
@@ -153,10 +153,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 8: Constraint generation tests
     const constraint_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/constraints/builder.zig" },
         .target = target,
         .optimize = optimize,
     });
+    constraint_tests.root_module.addRootSourceFile(b.path("src/constraints/builder.zig"));
     constraint_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_constraint_tests = b.addRunArtifact(constraint_tests);
     const constraint_test_step = b.step("test-constraints", "Run constraint generation tests");
@@ -164,10 +164,10 @@ pub fn build(b: *std.Build) void {
 
     // Phase 9: Full prover tests
     const prover_tests = b.addTest(.{
-        .root_source_file = .{ .cwd_relative = "src/prover/prover.zig" },
         .target = target,
         .optimize = optimize,
     });
+    prover_tests.root_module.addRootSourceFile(b.path("src/prover/prover.zig"));
     prover_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_prover_tests = b.addRunArtifact(prover_tests);
     const prover_test_step = b.step("test-prover", "Run full prover tests");

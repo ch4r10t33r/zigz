@@ -298,7 +298,7 @@ pub fn Prover(comptime F: type) type {
             // Generate one Lasso proof per lookup constraint (each is one table lookup)
             for (constraints.lookup_tables.items, 0..) |lookup_constraint, index| {
                 _ = lookup_constraint;
-                const table_id = @intCast(u64, index);
+                const table_id: u32 = @intCast(index);
                 const num_lookups = 1;
 
                 if (num_lookups == 0) continue;
@@ -387,12 +387,11 @@ pub fn Prover(comptime F: type) type {
             };
 
             // Commit to all 43 polynomials
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
             for (polynomials, 0..) |poly, i| {
-                var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
-                defer committer.deinit();
-
-                const commitment = try committer.commit(poly);
-                proof.witness_commitments[i].commitment = commitment;
+                const result = try Scheme.commit(poly, self.allocator);
+                defer result.tree.deinit();
+                proof.witness_commitments[i].commitment = result.commitment.commitment;
             }
 
             // PHASE 2: Bind all commitments to transcript (CRITICAL!)
@@ -410,7 +409,7 @@ pub fn Prover(comptime F: type) type {
                 }
 
                 // Evaluate polynomial at challenge point
-                proof.witness_commitments[i].value = try poly.evaluate(proof.witness_commitments[i].point);
+                proof.witness_commitments[i].value = try poly.eval(proof.witness_commitments[i].point[0..]);
             }
 
             // PHASE 4: Bind ALL opening claims (evaluation values) to transcript
@@ -438,13 +437,10 @@ pub fn Prover(comptime F: type) type {
             opening: *proof_mod.CommitmentOpening(F),
             poly: multilinear.Multilinear(F),
         ) !void {
-            // Create polynomial committer using Merkle tree
-            var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
-            defer committer.deinit();
-
-            // Commit to polynomial - this creates a Merkle tree over the evaluations
-            const commitment = try committer.commit(poly);
-            opening.commitment = commitment;
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const result = try Scheme.commit(poly, self.allocator);
+            defer result.tree.deinit();
+            opening.commitment = result.commitment.commitment;
 
             // SECURITY FIX: Derive evaluation point from Fiat-Shamir transcript
             // NOT from independent random generator
@@ -459,7 +455,7 @@ pub fn Prover(comptime F: type) type {
             }
 
             // Evaluate polynomial at the challenge point
-            opening.value = try poly.evaluate(opening.point);
+            opening.value = try poly.eval(opening.point[0..]);
 
             // Generate opening proof (Merkle authentication path)
             // The opening proof demonstrates that the claimed evaluation is consistent

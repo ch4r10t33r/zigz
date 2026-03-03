@@ -187,10 +187,6 @@ pub fn Verifier(comptime F: type) type {
             self.transcript.appendBytes("SUMCHECK_BEGIN");
             self.transcript.appendFieldElement(F, F.init(sumcheck_proof.num_vars));
 
-            // Initialize sumcheck verifier
-            var verifier = SumcheckVerifier.init(self.allocator, &self.transcript);
-            defer verifier.deinit();
-
             // Compute claimed sum (should be computed from constraints)
             // For now, we trust the proof's final_eval as the claimed sum
             // TODO: Compute expected sum from constraint polynomial definition
@@ -212,7 +208,7 @@ pub fn Verifier(comptime F: type) type {
                 // For subsequent rounds, check against previous challenge evaluation
                 if (round == 0) {
                     const sum_check = g_0.add(g_1);
-                    if (!sum_check.equal(claimed_sum)) {
+                    if (!sum_check.eql(claimed_sum)) {
                         return .RejectInvalidSumcheck;
                     }
                 }
@@ -287,20 +283,18 @@ pub fn Verifier(comptime F: type) type {
 
             // Verify that the opening point matches our derived challenges
             for (opening.point, expected_point) |claimed, expected| {
-                if (!claimed.equal(expected)) {
+                if (!claimed.eql(expected)) {
                     return .RejectInvalidCommitment;
                 }
             }
 
             // Verify Merkle proof for this opening
-            const verified = try polynomial_commit.verifyOpening(
-                F,
-                self.allocator,
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const poly_commit = polynomial_commit.PolynomialCommitment(F).init(
                 opening.commitment,
-                opening.point,
-                opening.value,
-                opening.proof,
+                opening.point.len,
             );
+            const verified = Scheme.verify(poly_commit, opening.proof);
 
             if (!verified) {
                 return .RejectInvalidCommitment;
@@ -389,5 +383,5 @@ test "verifier: transcript determinism" {
     const challenge1 = verifier1.transcript.challenge(BabyBear);
     const challenge2 = verifier2.transcript.challenge(BabyBear);
 
-    try testing.expect(challenge1.equal(challenge2));
+    try testing.expect(challenge1.eql(challenge2));
 }

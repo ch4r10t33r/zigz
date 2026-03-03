@@ -182,14 +182,14 @@ pub fn build(b: *std.Build) void {
     const verifier_test_step = b.step("test-verifier", "Run full verifier tests");
     verifier_test_step.dependOn(&run_verifier_tests.step);
 
-    // Verifier benchmarks
+    // Verifier benchmarks: run benchmarks.main() via zigz lib so path imports resolve
     const verifier_bench = b.addExecutable(.{
         .name = "verifier_bench",
-        .root_source_file = b.path("src/verifier/benchmarks.zig"),
+        .root_source_file = b.path("src/bench_runner.zig"),
         .target = target,
         .optimize = optimize,
     });
-    verifier_bench.root_module.addImport("hash-zig", hash_zig_mod);
+    verifier_bench.root_module.addImport("zigz", zigz_lib.root_module);
     b.installArtifact(verifier_bench);
 
     const run_verifier_bench = b.addRunArtifact(verifier_bench);

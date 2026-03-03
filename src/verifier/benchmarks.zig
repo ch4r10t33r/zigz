@@ -58,10 +58,11 @@ pub fn BenchmarkSuite(comptime F: type) type {
             defer self.allocator.free(program);
 
             // Generate proof
-            var prover = try Prover.init(self.allocator);
+            var prover = try Prover.init(self.allocator, 0);
             defer prover.deinit();
 
-            var proof = try prover.prove(program, 0x1000, null);
+            const max_steps = 1 << 20;
+            var proof = try prover.prove(program, 0x1000, null, max_steps);
             defer proof.deinit();
 
             // Measure proof size

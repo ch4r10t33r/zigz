@@ -29,9 +29,23 @@ Be respectful, constructive, and professional in all interactions.
 All builds and tests must use **Zig 0.14.1**. The repo root contains `.zig-version` with `0.14.1` so tools like zigup use the correct version when you `cd` into the project.
 
 - **If you see errors** like `no field named 'root_source_file'` or `no field or member function named 'addStaticLibrary'`, you are running Zig 0.15.x. Switch to 0.14.1.
-- **To use 0.14.1:**  
-  - With zigup: `zigup fetch 0.14.1` then `zigup 0.14.1` to set the default, or ensure `zig` in your PATH is 0.14.1 when in this repo.  
-  - Or install the [0.14.1 tarball](https://ziglang.org/download/) and put that `zig` on your PATH.
+- **To use 0.14.1 with zigup:**
+  ```bash
+  # If you have Homebrew's standalone zig installed, uninstall it first
+  brew uninstall zig
+  
+  # Fetch and switch to 0.14.1
+  zigup fetch 0.14.1
+  zigup 0.14.1 --path-link /opt/homebrew/bin/zig
+  
+  # Verify
+  zig version  # Should show 0.14.1
+  ```
+- **To switch between versions:**
+  ```bash
+  zigup 0.14.1 --path-link /opt/homebrew/bin/zig  # For this project
+  zigup 0.15.2 --path-link /opt/homebrew/bin/zig  # For other projects
+  ```
 
 ### Building
 

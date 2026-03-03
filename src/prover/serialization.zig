@@ -313,6 +313,7 @@ pub fn BinarySerializer(comptime F: type) type {
             for (proofs) |lasso| {
                 try writer.writeInt(u32, lasso.table_id, .little);
                 try writer.writeInt(u64, @intCast(lasso.num_lookups), .little);
+                try writer.writeInt(u32, @intCast(lasso.multiset_proof.num_vars), .little);
 
                 // Write multiset proof
                 try writeConstraintProof(writer, lasso.multiset_proof);
@@ -329,13 +330,14 @@ pub fn BinarySerializer(comptime F: type) type {
             for (0..num_proofs) |_| {
                 const table_id = try reader.readInt(u32, .little);
                 const num_lookups = try reader.readInt(u64, .little);
+                const num_vars = try reader.readInt(u32, .little);
 
-                // Create Lasso proof
+                // Create Lasso proof with correct num_vars
                 var lasso = try proof_mod.LassoProof(F).init(
                     allocator,
                     table_id,
                     @intCast(num_lookups),
-                    4, // Default num_vars
+                    @intCast(num_vars),
                 );
                 errdefer lasso.deinit();
 

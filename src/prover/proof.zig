@@ -180,7 +180,7 @@ pub fn CommitmentOpening(comptime F: type) type {
         }
 
         pub fn deinit(self: *Self) void {
-            self.allocator.free(self.point);
+            // point is shared with self.proof.point; free only via proof.deinit to avoid double free
             self.proof.deinit(self.allocator);
         }
     };

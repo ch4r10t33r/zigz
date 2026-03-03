@@ -16,7 +16,6 @@ const zigz = @import("zigz");
 /// - Different program sizes
 /// - Serialization roundtrip
 /// - Fiat-Shamir binding order
-
 const F = zigz.BabyBear;
 
 // Helper to create simple test programs
@@ -60,6 +59,7 @@ test "integration: basic end-to-end proof verification" {
 
     // Create simple program
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
@@ -93,6 +93,7 @@ test "integration: serialization roundtrip preserves proof validity" {
     std.debug.print("\n=== Test: Serialization Roundtrip ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
@@ -135,6 +136,7 @@ test "integration: wrong program hash causes rejection" {
     std.debug.print("\n=== Test: Program Hash Mismatch ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate proof for original program
@@ -213,6 +215,7 @@ test "integration: transcript generates deterministic challenges" {
     std.debug.print("\n=== Test: Transcript Determinism ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate two proofs with same inputs
@@ -234,7 +237,7 @@ test "integration: transcript generates deterministic challenges" {
         std.debug.print("Commitment {d} opening point comparison:\n", .{i});
         for (c1.point, c2.point, 0..) |p1, p2, j| {
             std.debug.print("  Coord {d}: {d} vs {d}\n", .{ j, p1.value, p2.value });
-            try testing.expect(p1.equal(p2));
+            try testing.expect(p1.eql(p2));
         }
     }
 
@@ -251,6 +254,7 @@ test "integration: tampered commitment causes rejection" {
     std.debug.print("\n=== Test: Tampered Commitment ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate valid proof
@@ -288,6 +292,7 @@ test "integration: opening claims are bound to transcript" {
     std.debug.print("\n=== Test: Opening Claims Binding ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
@@ -333,6 +338,7 @@ test "integration: public inputs bound to transcript" {
     std.debug.print("\n=== Test: Public Input Binding ===\n", .{});
 
     const program = try createAddProgram(allocator);
+    defer allocator.free(program);
 
     // Generate two proofs with different initial PCs
     var prover1 = try zigz.Prover(F).init(allocator, 0);
@@ -355,7 +361,7 @@ test "integration: public inputs bound to transcript" {
     var points_differ = false;
     if (proof1.witness_commitments.len > 0 and proof2.witness_commitments.len > 0) {
         for (proof1.witness_commitments[0].point, proof2.witness_commitments[0].point) |p1, p2| {
-            if (!p1.equal(p2)) {
+            if (!p1.eql(p2)) {
                 points_differ = true;
                 break;
             }

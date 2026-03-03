@@ -1,0 +1,11 @@
+---
+description: zigz uses Zig 0.14.1 only for build and tests
+alwaysApply: true
+---
+
+# Zig version: 0.14.1 only
+
+- **All builds and tests** in this repo must use **Zig 0.14.1**.
+- Do **not** migrate the project to Zig 0.15.x or suggest changes to support 0.15.
+- If the user sees errors like `root_source_file` or `addStaticLibrary`, they are on Zig 0.15; the fix is to **switch to 0.14.1**, not to update build.zig or deps for 0.15.
+- The repo has `.zig-version` set to `0.14.1` and CI uses 0.14.1.

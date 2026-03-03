@@ -114,9 +114,8 @@ pub fn BinarySerializer(comptime F: type) type {
 
             proof.metadata = metadata;
 
-            // Read public IO
+            // Read public IO (proof.deinit() cleans up public_io on errdefer)
             proof.public_io = try readPublicIO(allocator, &reader);
-            errdefer proof.public_io.deinit(allocator);
 
             // Read constraint proof
             try readConstraintProof(&reader, &proof.constraint_proof);

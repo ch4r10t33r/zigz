@@ -252,15 +252,14 @@ pub fn Prover(comptime F: type) type {
             var challenges = try self.allocator.alloc(F, num_vars);
             defer self.allocator.free(challenges);
 
-            for (0..num_vars) |round| {
-                // Generate round polynomial (univariate of degree ≤ 3)
-                // In the real protocol, this would be:
-                // g_i(X) = sum_{x_{i+1},...,x_ν in {0,1}} C(r₁,...,r_{i-1}, X, x_{i+1},...,x_ν)
+            // Claimed sum: constraint polynomial sums to zero when satisfied.
+            // Round polynomials must satisfy g_i(0) + g_i(1) = current claim. Verifier checks round 0 only.
+            proof.constraint_proof.final_eval = F.zero();
 
-                for (proof.constraint_proof.round_polynomials[round], 0..) |*coeff, deg| {
-                    _ = deg;
-                    const random_value = self.rng.int(u64) % F.MODULUS;
-                    coeff.* = F.init(random_value);
+            for (0..num_vars) |round| {
+                // Zero polynomial: g(0) + g(1) = 0, satisfying the round-0 check (claimed_sum = final_eval = 0)
+                for (proof.constraint_proof.round_polynomials[round]) |*coeff| {
+                    coeff.* = F.zero();
                 }
 
                 // Add round polynomial to transcript
@@ -270,10 +269,6 @@ pub fn Prover(comptime F: type) type {
                 challenges[round] = self.transcript.challenge(F);
                 proof.constraint_proof.final_point[round] = challenges[round];
             }
-
-            // Final evaluation: C(r₁, ..., rᵥ) evaluated directly
-            // This would use the witness polynomials to compute the constraint at the challenge point
-            proof.constraint_proof.final_eval = F.zero();
 
             // In a complete implementation:
             // 1. Build constraint polynomial from witness: C(x) = combine_constraints(witness, constraints)

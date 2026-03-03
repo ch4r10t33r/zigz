@@ -411,6 +411,25 @@ pub fn Prover(comptime F: type) type {
                 // Evaluate polynomial at challenge point
                 proof.witness_commitments[i].value = try poly.evaluate(proof.witness_commitments[i].point);
             }
+
+            // PHASE 4: Bind ALL opening claims (evaluation values) to transcript
+            // CRITICAL SECURITY FIX from Jolt PR #981:
+            // The evaluation values (Hi) are the "opening claims" that become
+            // sumcheck input claims. These MUST be bound to the transcript
+            // BEFORE deriving any batching coefficients (αi).
+            //
+            // Without this binding:
+            // - Batching coefficients αi are independent of claims Hi
+            // - Verification becomes linear: C_final = a·H + b = expected_eval
+            // - Attacker can solve small linear system to fake claims
+            //
+            // With this binding:
+            // - Batching coefficients αi depend on all claims Hi
+            // - Attacker cannot manipulate claims without detection
+            self.transcript.appendBytes("OPENING_CLAIMS");
+            for (proof.witness_commitments) |commitment| {
+                self.transcript.appendFieldElement(F, commitment.value);
+            }
         }
 
         fn commitToPolynomial(

@@ -70,9 +70,9 @@ if (initial_regs) |regs| {
 }
 ```
 
-#### 2. Two-Phase Commitment Protocol (Phase 2)
+#### 2. Four-Phase Commitment Protocol (Phase 2-3)
 
-Polynomial commitments are handled in **three distinct phases**:
+Polynomial commitments and opening claims are handled in **four distinct phases**:
 
 ```zig
 // PHASE 1: Generate commitments (Merkle roots only)
@@ -96,12 +96,31 @@ for (polynomials, 0..) |poly, i| {
     }
     proof.witness_commitments[i].value = try poly.evaluate(proof.witness_commitments[i].point);
 }
+
+// PHASE 4: Bind ALL opening claims (evaluation values) to transcript
+// THIS IS THE CRITICAL FIX FROM JOLT PR #981
+self.transcript.appendBytes("OPENING_CLAIMS");
+for (proof.witness_commitments) |commitment| {
+    self.transcript.appendFieldElement(F, commitment.value);  // Bind the CLAIMS (Hi)
+}
 ```
 
 This ensures that:
 - All commitments are visible to the attacker BEFORE challenges are derived
+- All opening claims (Hi) are bound BEFORE batching coefficients (αi) are derived
 - Batching coefficients `αi` **depend on all claims** `Hi`
 - The verification equation is no longer linear in manipulable claims
+
+**The Key Insight from PR #981:**
+> "Each sumcheck instance provides an `input_claim`, which is the value the polynomial allegedly sums to over the Boolean hypercube. These claims come from `opening_claims` in the proof, but they were never absorbed into the transcript before the batching coefficients were derived."
+
+Without Phase 4, an attacker could:
+1. See all commitments and evaluation points (known)
+2. Derive batching coefficients αi (independent of claims Hi)
+3. Solve linear system: `C_final = a·H + b = expected_eval` for fake claim H
+4. Pass verification with incorrect claim
+
+With Phase 4, batching coefficients depend on claims, making manipulation impossible.
 
 #### 3. Domain Separation
 

@@ -60,13 +60,17 @@ pub fn Verifier(comptime F: type) type {
             // PHASE 2: Bind polynomial commitments (MUST MATCH PROVER ORDER)
             try self.bindPolynomialCommitments(proof.witness_commitments);
 
-            // PHASE 3: Verify sumcheck proof for constraint satisfaction
+            // PHASE 3: Derive opening challenges and bind opening claims
+            // This must happen BEFORE sumcheck verification to match prover order
+            try self.deriveAndBindOpeningClaims(proof.witness_commitments);
+
+            // PHASE 4: Verify sumcheck proof for constraint satisfaction
             const sumcheck_result = try self.verifySumcheckProof(proof.constraint_proof);
             if (sumcheck_result != .Accept) {
                 return .RejectInvalidSumcheck;
             }
 
-            // PHASE 4: Verify Lasso lookup proofs
+            // PHASE 5: Verify Lasso lookup proofs
             for (proof.lookup_proofs.items) |lasso_proof| {
                 const lasso_result = try self.verifyLassoProof(lasso_proof);
                 if (lasso_result != .Accept) {
@@ -74,7 +78,7 @@ pub fn Verifier(comptime F: type) type {
                 }
             }
 
-            // PHASE 5: Verify polynomial opening proofs
+            // PHASE 6: Verify polynomial opening proofs
             for (proof.witness_commitments) |opening| {
                 const opening_result = try self.verifyOpening(opening);
                 if (opening_result != .Accept) {
@@ -129,6 +133,48 @@ pub fn Verifier(comptime F: type) type {
             // Bind all commitment roots
             for (commitments) |commitment| {
                 self.transcript.appendBytes(&commitment.commitment);
+            }
+        }
+
+        /// Derive opening challenges and bind opening claims
+        /// CRITICAL SECURITY: This implements the fix from Jolt PR #981
+        ///
+        /// The vulnerability: Without binding opening claims (Hi) before deriving
+        /// batching coefficients (αi), verification becomes linear and exploitable.
+        ///
+        /// The fix: Bind ALL opening claims to transcript before any batching.
+        fn deriveAndBindOpeningClaims(
+            self: *Self,
+            commitments: []const proof_mod.CommitmentOpening(F),
+        ) !void {
+            // Derive opening challenges for each commitment
+            // These challenges determine WHERE we evaluate each polynomial
+            for (commitments) |commitment| {
+                for (commitment.point) |_| {
+                    _ = self.transcript.challenge(F);
+                }
+            }
+
+            // CRITICAL: Bind all opening claims (evaluation values) to transcript
+            // This must happen BEFORE deriving any batching coefficients
+            //
+            // From Jolt PR #981:
+            // "Each sumcheck instance provides an `input_claim`, which is the value
+            //  the polynomial allegedly sums to over the Boolean hypercube. These
+            //  claims come from `opening_claims` in the proof, but they were never
+            //  absorbed into the transcript before the batching coefficients were derived."
+            //
+            // Without this binding:
+            // - BatchedClaim = Σ αi·Hi where αi independent of Hi
+            // - Final check: C_final = a·H + b = expected_eval (linear in H)
+            // - Attacker solves for fake H that passes verification
+            //
+            // With this binding:
+            // - αi depends on all Hi
+            // - Attacker cannot manipulate claims without detection
+            self.transcript.appendBytes("OPENING_CLAIMS");
+            for (commitments) |commitment| {
+                self.transcript.appendFieldElement(F, commitment.value);
             }
         }
 

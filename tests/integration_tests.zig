@@ -63,7 +63,7 @@ test "integration: basic end-to-end proof verification" {
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     var proof = try prover.prove(program, entry_pc, null, 1 << 20);
@@ -96,7 +96,7 @@ test "integration: serialization roundtrip preserves proof validity" {
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     var proof = try prover.prove(program, entry_pc, null, 1 << 20);
@@ -138,7 +138,7 @@ test "integration: wrong program hash causes rejection" {
     const entry_pc: u64 = 0x1000;
 
     // Generate proof for original program
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     var proof = try prover.prove(program, entry_pc, null, 1 << 20);
@@ -216,13 +216,13 @@ test "integration: transcript generates deterministic challenges" {
     const entry_pc: u64 = 0x1000;
 
     // Generate two proofs with same inputs
-    var prover1 = try zigz.Prover(F).init(allocator);
+    var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
     var proof1 = try prover1.prove(program, entry_pc, null, 1 << 20);
     defer proof1.deinit();
 
-    var prover2 = try zigz.Prover(F).init(allocator);
+    var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
     var proof2 = try prover2.prove(program, entry_pc, null, 1 << 20);
@@ -254,7 +254,7 @@ test "integration: tampered commitment causes rejection" {
     const entry_pc: u64 = 0x1000;
 
     // Generate valid proof
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     var proof = try prover.prove(program, entry_pc, null, 1 << 20);
@@ -291,7 +291,7 @@ test "integration: opening claims are bound to transcript" {
     const entry_pc: u64 = 0x1000;
 
     // Generate proof
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     var proof = try prover.prove(program, entry_pc, null, 1 << 20);
@@ -335,13 +335,13 @@ test "integration: public inputs bound to transcript" {
     const program = try createAddProgram(allocator);
 
     // Generate two proofs with different initial PCs
-    var prover1 = try zigz.Prover(F).init(allocator);
+    var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
     var proof1 = try prover1.prove(program, 0x1000, null, 1 << 20);
     defer proof1.deinit();
 
-    var prover2 = try zigz.Prover(F).init(allocator);
+    var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
     var proof2 = try prover2.prove(program, 0x2000, null, 1 << 20);

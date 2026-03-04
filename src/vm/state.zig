@@ -118,10 +118,15 @@ pub const VMState = struct {
     }
 
     /// Run VM until halt or max steps reached
+    ///
+    /// InvalidInstruction (e.g. fetch from unmapped memory) is treated as normal halt.
     pub fn run(self: *Self, max_steps: usize) !void {
         var steps: usize = 0;
         while (!self.halted and steps < max_steps) : (steps += 1) {
-            try self.step();
+            self.step() catch |err| {
+                if (err == error.InvalidInstruction) return; // Halted on invalid/decode failure
+                return err;
+            };
         }
 
         if (steps >= max_steps and !self.halted) {

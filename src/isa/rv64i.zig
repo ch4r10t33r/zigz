@@ -76,10 +76,11 @@ pub const Opcode = enum(u7) {
 
 /// Funct3 field (bits [14:12])
 ///
-/// Specifies the operation variant within an opcode class
+/// Specifies the operation variant within an opcode class. Same bit pattern
+/// has different meaning per opcode (e.g. 0b000 = ADD/SUB for OP, LB for LOAD),
+/// so we only enumerate the OP/OP_IMM set here. Use funct3_* constants for others.
 pub const Funct3 = enum(u3) {
-    // OP_IMM / OP
-    ADD_SUB = 0b000, // ADDI/ADD/SUB
+    ADD_SUB = 0b000, // ADDI/ADD/SUB (OP_IMM/OP)
     SLL = 0b001,     // SLLI/SLL
     SLT = 0b010,     // SLTI/SLT
     SLTU = 0b011,    // SLTIU/SLTU
@@ -87,36 +88,14 @@ pub const Funct3 = enum(u3) {
     SRL_SRA = 0b101, // SRLI/SRAI/SRL/SRA
     OR = 0b110,      // ORI/OR
     AND = 0b111,     // ANDI/AND
-
-    // LOAD
-    LB = 0b000,  // Load Byte (sign-extended)
-    LH = 0b001,  // Load Halfword (sign-extended)
-    LW = 0b010,  // Load Word (sign-extended in RV64I)
-    LD = 0b011,  // Load Doubleword (RV64I only)
-    LBU = 0b100, // Load Byte Unsigned
-    LHU = 0b101, // Load Halfword Unsigned
-    LWU = 0b110, // Load Word Unsigned (RV64I only)
-
-    // STORE
-    SB = 0b000, // Store Byte
-    SH = 0b001, // Store Halfword
-    SW = 0b010, // Store Word
-    SD = 0b011, // Store Doubleword (RV64I only)
-
-    // BRANCH
-    BEQ = 0b000,  // Branch Equal
-    BNE = 0b001,  // Branch Not Equal
-    BLT = 0b100,  // Branch Less Than
-    BGE = 0b101,  // Branch Greater or Equal
-    BLTU = 0b110, // Branch Less Than Unsigned
-    BGEU = 0b111, // Branch Greater or Equal Unsigned
-
-    // MISC_MEM
-    FENCE = 0b000,
-    FENCE_I = 0b001,
-
     _,
 };
+
+/// Funct3 values for LOAD/STORE (same bits, different opcode context)
+pub const funct3_ld: u3 = 0b011;  // Load Doubleword (RV64I)
+pub const funct3_lwu: u3 = 0b110; // Load Word Unsigned (RV64I)
+pub const funct3_sd: u3 = 0b011;  // Store Doubleword (RV64I)
+pub const funct3_lw: u3 = 0b010;  // Load Word (sign-extended in RV64I)
 
 /// Funct7 field (bits [31:25])
 ///
@@ -260,9 +239,8 @@ pub const Instruction = struct {
     pub fn isRV64IOnly(self: Instruction) bool {
         return switch (self.opcode) {
             .OP_IMM_32, .OP_32 => true, // *W instructions
-            .LOAD => self.funct3 == @intFromEnum(Funct3.LD) or
-                self.funct3 == @intFromEnum(Funct3.LWU),
-            .STORE => self.funct3 == @intFromEnum(Funct3.SD),
+            .LOAD => self.funct3 == funct3_ld or self.funct3 == funct3_lwu,
+            .STORE => self.funct3 == funct3_sd,
             else => false,
         };
     }
@@ -274,7 +252,7 @@ pub const Instruction = struct {
     pub fn isWordOperation(self: Instruction) bool {
         return switch (self.opcode) {
             .OP_IMM_32, .OP_32 => true,
-            .LOAD => self.funct3 == @intFromEnum(Funct3.LW), // LW sign-extends in RV64I
+            .LOAD => self.funct3 == funct3_lw, // LW sign-extends in RV64I
             else => false,
         };
     }
@@ -329,7 +307,7 @@ test "rv64i: decode LD (Load Doubleword)" {
     const decoded = try Instruction.decode(inst);
 
     try testing.expectEqual(Opcode.LOAD, decoded.opcode);
-    try testing.expectEqual(@as(u3, @intFromEnum(Funct3.LD)), decoded.funct3);
+    try testing.expectEqual(funct3_ld, decoded.funct3);
     try testing.expectEqual(@as(u5, 1), decoded.rd);
     try testing.expectEqual(@as(u5, 2), decoded.rs1);
     try testing.expectEqual(@as(i64, 8), decoded.imm);
@@ -348,7 +326,7 @@ test "rv64i: decode SD (Store Doubleword)" {
     const decoded = try Instruction.decode(inst);
 
     try testing.expectEqual(Opcode.STORE, decoded.opcode);
-    try testing.expectEqual(@as(u3, @intFromEnum(Funct3.SD)), decoded.funct3);
+    try testing.expectEqual(funct3_sd, decoded.funct3);
     try testing.expectEqual(@as(u5, 1), decoded.rs2);
     try testing.expectEqual(@as(u5, 2), decoded.rs1);
     try testing.expectEqual(@as(i64, 16), decoded.imm);
@@ -364,7 +342,7 @@ test "rv64i: decode LWU (Load Word Unsigned)" {
     const decoded = try Instruction.decode(inst);
 
     try testing.expectEqual(Opcode.LOAD, decoded.opcode);
-    try testing.expectEqual(@as(u3, @intFromEnum(Funct3.LWU)), decoded.funct3);
+    try testing.expectEqual(funct3_lwu, decoded.funct3);
     try testing.expect(decoded.isRV64IOnly());
 }
 

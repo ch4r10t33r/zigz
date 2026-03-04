@@ -35,28 +35,41 @@ pub const InstructionFormat = enum {
 /// Note: RV64I adds OP_IMM_32 and OP_32 opcodes for word operations
 pub const Opcode = enum(u7) {
     LOAD = 0b0000011,      // LB, LH, LW, LD, LBU, LHU, LWU
+    LOAD_FP = 0b0000111,   // FLW, FLD (floating-point, not implemented)
     MISC_MEM = 0b0001111,  // FENCE, FENCE.I
     OP_IMM = 0b0010011,    // ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
     AUIPC = 0b0010111,     // AUIPC
     OP_IMM_32 = 0b0011011, // RV64I: ADDIW, SLLIW, SRLIW, SRAIW
     STORE = 0b0100011,     // SB, SH, SW, SD
+    STORE_FP = 0b0100111,  // FSW, FSD (floating-point, not implemented)
+    AMO = 0b0101111,       // Atomic operations (not implemented)
     OP = 0b0110011,        // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
     LUI = 0b0110111,       // LUI
     OP_32 = 0b0111011,     // RV64I: ADDW, SUBW, SLLW, SRLW, SRAW
+    MADD = 0b1000011,      // Floating-point multiply-add (not implemented)
+    MSUB = 0b1000111,      // Floating-point multiply-sub (not implemented)
+    NMSUB = 0b1001011,     // Floating-point negate multiply-sub (not implemented)
+    NMADD = 0b1001111,     // Floating-point negate multiply-add (not implemented)
+    OP_FP = 0b1010011,     // Floating-point operations (not implemented)
     BRANCH = 0b1100011,    // BEQ, BNE, BLT, BGE, BLTU, BGEU
     JALR = 0b1100111,      // JALR
     JAL = 0b1101111,       // JAL
     SYSTEM = 0b1110011,    // ECALL, EBREAK, CSR*
 
+    _,                     // Catch-all for unknown opcodes
+
     /// Get the instruction format for this opcode
     pub fn instructionFormat(self: Opcode) InstructionFormat {
         return switch (self) {
-            .OP, .OP_32 => .R,
-            .OP_IMM, .OP_IMM_32, .JALR, .LOAD, .MISC_MEM, .SYSTEM => .I,
-            .STORE => .S,
+            .OP, .OP_32, .AMO => .R,
+            .OP_IMM, .OP_IMM_32, .JALR, .LOAD, .LOAD_FP, .MISC_MEM, .SYSTEM => .I,
+            .STORE, .STORE_FP => .S,
             .BRANCH => .B,
             .LUI, .AUIPC => .U,
             .JAL => .J,
+            .MADD, .MSUB, .NMSUB, .NMADD => .R, // R4-type (similar to R-type)
+            .OP_FP => .R,
+            _ => .R, // Unknown opcodes default to R-type
         };
     }
 };

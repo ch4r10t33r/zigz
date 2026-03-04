@@ -145,7 +145,11 @@ pub const VMState = struct {
             .LUI => try self.executeLUI(inst),
             .AUIPC => try self.executeAUIPC(inst),
             .SYSTEM => try self.executeSYSTEM(inst),
-            else => {
+            .MISC_MEM => {
+                // FENCE instructions - no-op in our VM
+                return self.pc + 4;
+            },
+            .LOAD_FP, .STORE_FP, .AMO, .OP_FP, .MADD, .MSUB, .NMSUB, .NMADD, _ => {
                 std.debug.print("Unimplemented opcode: {}\n", .{inst.opcode});
                 return error.UnimplementedInstruction;
             },
@@ -250,12 +254,12 @@ pub const VMState = struct {
     }
 
     fn executeOPIMM32(self: *Self, inst: rv64i.Instruction) !u64 {
-        // RV64I: Word immediate operations
+        // RV64I: Word immediate operations (imm is i64; use low 32 bits for 32-bit ops)
         const rs1_val = @as(u32, @truncate(self.regs.read(inst.rs1)));
-        const imm: u32 = @bitCast(inst.imm);
+        const imm: u64 = @bitCast(inst.imm);
 
         const result32 = switch (inst.funct3) {
-            0b000 => rs1_val +% imm, // ADDIW
+            0b000 => rs1_val +% @as(u32, @truncate(imm)), // ADDIW
             0b001 => rs1_val << @truncate(imm & 0x1F), // SLLIW
             0b101 => blk: { // SRLIW or SRAIW
                 const shamt: u5 = @truncate(imm & 0x1F);

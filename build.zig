@@ -116,67 +116,79 @@ pub fn build(b: *std.Build) void {
     const isa_test_step = b.step("test-isa", "Run RISC-V ISA tests");
     isa_test_step.dependOn(&run_isa_tests.step);
 
-    // Phase 5: Lasso lookup argument tests
+    // Phase 5: Lasso lookup argument tests (via zigz lib so imports resolve)
     const lasso_tests = b.addTest(.{
-        .root_source_file = b.path("src/lookups/lasso_prover.zig"),
+        .root_source_file = b.path("tests/test_lasso.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"lasso_prover"},
     });
+    lasso_tests.root_module.addImport("zigz", zigz_lib.root_module);
     lasso_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_lasso_tests = b.addRunArtifact(lasso_tests);
     const lasso_test_step = b.step("test-lasso", "Run Lasso lookup argument tests");
     lasso_test_step.dependOn(&run_lasso_tests.step);
 
-    // Phase 6: Polynomial commitment tests
+    // Phase 6: Polynomial commitment tests (via zigz lib so imports resolve)
     const commit_tests = b.addTest(.{
-        .root_source_file = b.path("src/commitments/polynomial_commit.zig"),
+        .root_source_file = b.path("tests/test_commit.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"polynomial_commit"},
     });
+    commit_tests.root_module.addImport("zigz", zigz_lib.root_module);
     commit_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_commit_tests = b.addRunArtifact(commit_tests);
     const commit_test_step = b.step("test-commit", "Run polynomial commitment tests");
     commit_test_step.dependOn(&run_commit_tests.step);
 
-    // Phase 7: VM state machine tests
+    // Phase 7: VM state machine tests (via zigz lib so imports resolve)
     const vm_tests = b.addTest(.{
-        .root_source_file = b.path("src/vm/state.zig"),
+        .root_source_file = b.path("tests/test_vm.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"vm:"},
     });
+    vm_tests.root_module.addImport("zigz", zigz_lib.root_module);
     vm_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_vm_tests = b.addRunArtifact(vm_tests);
     const vm_test_step = b.step("test-vm", "Run VM state machine tests");
     vm_test_step.dependOn(&run_vm_tests.step);
 
-    // Phase 8: Constraint generation tests
+    // Phase 8: Constraint generation tests (via zigz lib so imports resolve)
     const constraint_tests = b.addTest(.{
-        .root_source_file = b.path("src/constraints/builder.zig"),
+        .root_source_file = b.path("tests/test_constraints.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"constraints:"},
     });
+    constraint_tests.root_module.addImport("zigz", zigz_lib.root_module);
     constraint_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_constraint_tests = b.addRunArtifact(constraint_tests);
     const constraint_test_step = b.step("test-constraints", "Run constraint generation tests");
     constraint_test_step.dependOn(&run_constraint_tests.step);
 
-    // Phase 9: Full prover tests
+    // Phase 9: Full prover tests (via zigz lib so imports resolve)
     const prover_tests = b.addTest(.{
-        .root_source_file = b.path("src/prover/prover.zig"),
+        .root_source_file = b.path("tests/test_prover.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"prover:"},
     });
+    prover_tests.root_module.addImport("zigz", zigz_lib.root_module);
     prover_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_prover_tests = b.addRunArtifact(prover_tests);
     const prover_test_step = b.step("test-prover", "Run full prover tests");
     prover_test_step.dependOn(&run_prover_tests.step);
 
-    // Phase 10: Full verifier tests
+    // Phase 10: Full verifier tests (via zigz lib so imports resolve)
     const verifier_tests = b.addTest(.{
-        .root_source_file = b.path("src/verifier/verifier.zig"),
+        .root_source_file = b.path("tests/test_verifier.zig"),
         .target = target,
         .optimize = optimize,
+        .filters = &[1][]const u8{"verifier:"},
     });
+    verifier_tests.root_module.addImport("zigz", zigz_lib.root_module);
     verifier_tests.root_module.addImport("hash-zig", hash_zig_mod);
     const run_verifier_tests = b.addRunArtifact(verifier_tests);
     const verifier_test_step = b.step("test-verifier", "Run full verifier tests");

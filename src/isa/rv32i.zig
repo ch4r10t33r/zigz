@@ -11,7 +11,6 @@ const std = @import("std");
 ///
 /// Reference: RISC-V Instruction Set Manual, Volume I: User-Level ISA
 /// https://riscv.org/technical/specifications/
-
 /// RISC-V instruction formats
 ///
 /// RV32I uses 6 instruction formats, each encoding different fields:
@@ -260,9 +259,9 @@ fn decodeImmediate(word: u32, format: InstructionFormat) i32 {
         // I-type: imm[11:0] = inst[31:20]
         .I => blk: {
             const imm_unsigned = (word >> 20) & 0xFFF;
-            // Sign extend from bit 11
+            // Sign extend from bit 11 (use bitCast to avoid intCast truncation panic)
             const imm_signed = if ((imm_unsigned & 0x800) != 0)
-                @as(i32, @intCast(imm_unsigned | 0xFFFFF000))
+                @as(i32, @bitCast(@as(u32, imm_unsigned | 0xFFFFF000)))
             else
                 @as(i32, @intCast(imm_unsigned));
             break :blk imm_signed;
@@ -273,9 +272,8 @@ fn decodeImmediate(word: u32, format: InstructionFormat) i32 {
             const imm_11_5 = (word >> 25) & 0x7F;
             const imm_4_0 = (word >> 7) & 0x1F;
             const imm_unsigned = (imm_11_5 << 5) | imm_4_0;
-            // Sign extend from bit 11
             const imm_signed = if ((imm_unsigned & 0x800) != 0)
-                @as(i32, @intCast(imm_unsigned | 0xFFFFF000))
+                @as(i32, @bitCast(@as(u32, imm_unsigned | 0xFFFFF000)))
             else
                 @as(i32, @intCast(imm_unsigned));
             break :blk imm_signed;
@@ -289,9 +287,8 @@ fn decodeImmediate(word: u32, format: InstructionFormat) i32 {
             const imm_4_1 = (word >> 8) & 0xF;
             const imm_unsigned = (imm_12 << 12) | (imm_11 << 11) |
                 (imm_10_5 << 5) | (imm_4_1 << 1);
-            // Sign extend from bit 12
             const imm_signed = if ((imm_unsigned & 0x1000) != 0)
-                @as(i32, @intCast(imm_unsigned | 0xFFFFE000))
+                @as(i32, @bitCast(@as(u32, imm_unsigned | 0xFFFFE000)))
             else
                 @as(i32, @intCast(imm_unsigned));
             break :blk imm_signed;
@@ -311,9 +308,8 @@ fn decodeImmediate(word: u32, format: InstructionFormat) i32 {
             const imm_10_1 = (word >> 21) & 0x3FF;
             const imm_unsigned = (imm_20 << 20) | (imm_19_12 << 12) |
                 (imm_11 << 11) | (imm_10_1 << 1);
-            // Sign extend from bit 20
             const imm_signed = if ((imm_unsigned & 0x100000) != 0)
-                @as(i32, @intCast(imm_unsigned | 0xFFE00000))
+                @as(i32, @bitCast(@as(u32, imm_unsigned | 0xFFE00000)))
             else
                 @as(i32, @intCast(imm_unsigned));
             break :blk imm_signed;
@@ -418,8 +414,8 @@ test "rv32i: decode LUI instruction" {
 
 test "rv32i: decode JAL instruction" {
     // jal x1, 1024
-    // J-type: opcode=1101111, rd=1, imm=1024
-    const word: u32 = 0b0_0000000010_0_00000000_00001_1101111;
+    // J-type: imm[20:1]=512 (1024/2), opcode=1101111, rd=1
+    const word: u32 = 0b0_1000000000_0_00000000_00001_1101111;
 
     const inst = try Instruction.decode(word);
 

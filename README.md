@@ -203,8 +203,18 @@ Cannot run (without soft-float):
 
 ### Prerequisites
 
-- Zig 0.14.1
+- Zig 0.14.1 (for building from source)
 - Git (for dependency management)
+
+### Install zigz (one-liner)
+
+Install the zigz CLI (downloads pre-built binary from latest release, or builds from source if none):
+
+```bash
+eval $(curl -sL https://raw.githubusercontent.com/ch4r10t33r/zigz/main/scripts/install_zigz.sh | sh)
+```
+
+Installs to `~/.local/bin` (or `$ZIGZ_INSTALL_DIR/bin`). The script prints `export PATH=...` so the current shell has `zigz` on PATH.
 
 ### Installation
 

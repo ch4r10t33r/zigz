@@ -176,3 +176,41 @@ jobs:
       run: |
         echo "Benchmark results would be posted to PR here"
         echo "TODO: Parse benchmark output and post as PR comment"
+
+  # Cross-platform zigz builds on push to main (after merge). Artifacts named for install_zigz.sh (zigz-<os>-<arch>).
+  build-release:
+    name: Build zigz (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Zig and build zigz
+      run: |
+        chmod +x scripts/install_zig.sh
+        eval $(./scripts/install_zig.sh 0.14.1)
+        zig version
+        [ "$(zig version | cut -d' ' -f1)" = "0.14.1" ] || { echo "Expected Zig 0.14.1"; exit 1; }
+        zig build -Doptimize=ReleaseSafe
+
+    - name: Set artifact name for install_zigz.sh
+      id: asset
+      run: |
+        case "$(uname -s)" in Linux) OS=linux;; Darwin) OS=macos;; *) OS=unknown;; esac
+        case "$(uname -m)" in x86_64|amd64) ARCH=x86_64;; aarch64|arm64) ARCH=aarch64;; *) ARCH=unknown;; esac
+        echo "name=zigz-${OS}-${ARCH}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload zigz binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.asset.outputs.name }}
+        path: zig-out/bin/zigz

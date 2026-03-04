@@ -139,6 +139,18 @@ pub fn build(b: *std.Build) void {
     const rv64i_vm_test_step = b.step("test-rv64i-vm", "Run RV64I VM execution tests");
     rv64i_vm_test_step.dependOn(&run_rv64i_vm_tests.step);
 
+    // RV64M extension tests (multiply/divide)
+    const rv64m_tests = b.addTest(.{
+        .root_source_file = b.path("tests/test_rv64m.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    rv64m_tests.root_module.addImport("zigz", zigz_lib.root_module);
+    rv64m_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    const run_rv64m_tests = b.addRunArtifact(rv64m_tests);
+    const rv64m_test_step = b.step("test-rv64m", "Run RV64M multiply/divide tests");
+    rv64m_test_step.dependOn(&run_rv64m_tests.step);
+
     // Phase 5: Lasso lookup argument tests (via zigz lib so imports resolve)
     const lasso_tests = b.addTest(.{
         .root_source_file = b.path("tests/test_lasso.zig"),
@@ -253,6 +265,7 @@ pub fn build(b: *std.Build) void {
     all_tests_step.dependOn(isa_test_step);
     all_tests_step.dependOn(rv64i_test_step);
     all_tests_step.dependOn(rv64i_vm_test_step);
+    all_tests_step.dependOn(rv64m_test_step);
     all_tests_step.dependOn(lasso_test_step);
     all_tests_step.dependOn(commit_test_step);
     all_tests_step.dependOn(vm_test_step);

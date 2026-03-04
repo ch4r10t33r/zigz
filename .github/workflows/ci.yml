@@ -46,6 +46,15 @@ jobs:
         zig build test-isa
         echo "::endgroup::"
 
+        echo "::group::RV64I Tests"
+        zig build test-rv64i
+        zig build test-rv64i-vm
+        echo "::endgroup::"
+
+        echo "::group::RV64M Tests"
+        zig build test-rv64m
+        echo "::endgroup::"
+
         echo "::group::Lasso Lookup Tests"
         zig build test-lasso
         echo "::endgroup::"

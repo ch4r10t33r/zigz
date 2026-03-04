@@ -164,6 +164,70 @@ pub const VMState = struct {
         const rs1_val = self.regs.read(inst.rs1);
         const rs2_val = self.regs.read(inst.rs2);
 
+        // RV64M: Multiply/Divide extension (funct7 = 0b0000001)
+        if (inst.funct7 == 0b0000001) {
+            const result = switch (inst.funct3) {
+                0b000 => rs1_val *% rs2_val, // MUL - lower 64 bits
+                0b001 => blk: { // MULH - signed × signed, upper 64 bits
+                    const a: i128 = @as(i64, @bitCast(rs1_val));
+                    const b: i128 = @as(i64, @bitCast(rs2_val));
+                    const product: i128 = a *% b;
+                    break :blk @as(u64, @bitCast(@as(i64, @truncate(product >> 64))));
+                },
+                0b010 => blk: { // MULHSU - signed × unsigned, upper 64 bits
+                    const a: i128 = @as(i64, @bitCast(rs1_val));
+                    const b: i128 = @as(i128, rs2_val);
+                    const product: i128 = a *% b;
+                    break :blk @as(u64, @bitCast(@as(i64, @truncate(product >> 64))));
+                },
+                0b011 => blk: { // MULHU - unsigned × unsigned, upper 64 bits
+                    const a: u128 = rs1_val;
+                    const b: u128 = rs2_val;
+                    const product: u128 = a *% b;
+                    break :blk @truncate(product >> 64);
+                },
+                0b100 => blk: { // DIV - signed division
+                    const a: i64 = @bitCast(rs1_val);
+                    const b: i64 = @bitCast(rs2_val);
+                    if (b == 0) {
+                        break :blk @as(u64, @bitCast(@as(i64, -1))); // Division by zero: -1
+                    }
+                    // Handle overflow: INT64_MIN / -1
+                    if (a == std.math.minInt(i64) and b == -1) {
+                        break :blk @bitCast(a); // Return dividend
+                    }
+                    break :blk @bitCast(a / b);
+                },
+                0b101 => blk: { // DIVU - unsigned division
+                    if (rs2_val == 0) {
+                        break :blk std.math.maxInt(u64); // Division by zero: 2^64-1
+                    }
+                    break :blk rs1_val / rs2_val;
+                },
+                0b110 => blk: { // REM - signed remainder
+                    const a: i64 = @bitCast(rs1_val);
+                    const b: i64 = @bitCast(rs2_val);
+                    if (b == 0) {
+                        break :blk rs1_val; // Division by zero: return dividend
+                    }
+                    // Handle overflow: INT64_MIN % -1 = 0
+                    if (a == std.math.minInt(i64) and b == -1) {
+                        break :blk 0;
+                    }
+                    break :blk @bitCast(@rem(a, b));
+                },
+                0b111 => blk: { // REMU - unsigned remainder
+                    if (rs2_val == 0) {
+                        break :blk rs1_val; // Division by zero: return dividend
+                    }
+                    break :blk rs1_val % rs2_val;
+                },
+            };
+            self.regs.write(inst.rd, result);
+            return self.pc + 4;
+        }
+
+        // RV64I base instructions
         const result = switch (inst.funct3) {
             0b000 => blk: { // ADD or SUB
                 if (inst.funct7 == 0b0100000) {
@@ -199,6 +263,55 @@ pub const VMState = struct {
         const rs1_val = @as(u32, @truncate(self.regs.read(inst.rs1)));
         const rs2_val = @as(u32, @truncate(self.regs.read(inst.rs2)));
 
+        // RV64M: Word multiply/divide extension (funct7 = 0b0000001)
+        if (inst.funct7 == 0b0000001) {
+            const result32 = switch (inst.funct3) {
+                0b000 => rs1_val *% rs2_val, // MULW - lower 32 bits
+                0b100 => blk: { // DIVW - signed division
+                    const a: i32 = @bitCast(rs1_val);
+                    const b: i32 = @bitCast(rs2_val);
+                    if (b == 0) {
+                        break :blk @as(u32, @bitCast(@as(i32, -1))); // Division by zero: -1
+                    }
+                    // Handle overflow: INT32_MIN / -1
+                    if (a == std.math.minInt(i32) and b == -1) {
+                        break :blk @bitCast(a); // Return dividend
+                    }
+                    break :blk @bitCast(a / b);
+                },
+                0b101 => blk: { // DIVUW - unsigned division
+                    if (rs2_val == 0) {
+                        break :blk std.math.maxInt(u32); // Division by zero: 2^32-1
+                    }
+                    break :blk rs1_val / rs2_val;
+                },
+                0b110 => blk: { // REMW - signed remainder
+                    const a: i32 = @bitCast(rs1_val);
+                    const b: i32 = @bitCast(rs2_val);
+                    if (b == 0) {
+                        break :blk rs1_val; // Division by zero: return dividend
+                    }
+                    // Handle overflow: INT32_MIN % -1 = 0
+                    if (a == std.math.minInt(i32) and b == -1) {
+                        break :blk 0;
+                    }
+                    break :blk @bitCast(@rem(a, b));
+                },
+                0b111 => blk: { // REMUW - unsigned remainder
+                    if (rs2_val == 0) {
+                        break :blk rs1_val; // Division by zero: return dividend
+                    }
+                    break :blk rs1_val % rs2_val;
+                },
+                else => return error.InvalidOP32M,
+            };
+            // Sign-extend to 64 bits
+            const result64: u64 = @bitCast(@as(i64, @as(i32, @bitCast(result32))));
+            self.regs.write(inst.rd, result64);
+            return self.pc + 4;
+        }
+
+        // RV64I base word instructions
         const result32 = switch (inst.funct3) {
             0b000 => blk: { // ADDW or SUBW
                 if (inst.funct7 == 0b0100000) {

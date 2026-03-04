@@ -3,6 +3,7 @@ const field = @import("../core/field.zig");
 const multilinear = @import("../poly/multilinear.zig");
 const sumcheck_prover = @import("../proofs/sumcheck_prover.zig");
 const polynomial_commit = @import("../commitments/polynomial_commit.zig");
+const merkle_tree = @import("../commitments/merkle_tree.zig");
 const lasso_prover = @import("../lookups/lasso_prover.zig");
 const witness_gen = @import("../constraints/witness.zig");
 const constraint_builder = @import("../constraints/builder.zig");
@@ -22,7 +23,6 @@ const hash = @import("../core/hash.zig");
 /// 7. Package into complete proof
 ///
 /// The prover is the main entry point for proof generation.
-
 pub fn Prover(comptime F: type) type {
     return struct {
         const Self = @This();
@@ -369,23 +369,35 @@ pub fn Prover(comptime F: type) type {
                 witness.pc, // 0
             } ++ witness.registers.polys ++ // 1-32
                 [_]multilinear.Multilinear(F){
-                witness.instruction.opcode, // 33
-                witness.instruction.rd, // 34
-                witness.instruction.rs1, // 35
-                witness.instruction.rs2, // 36
-                witness.instruction.funct3, // 37
-                witness.instruction.funct7, // 38
-                witness.instruction.imm, // 39
-                witness.memory.address, // 40
-                witness.memory.value, // 41
-                witness.memory.is_read, // 42
-            };
+                    witness.instruction.opcode, // 33
+                    witness.instruction.rd, // 34
+                    witness.instruction.rs1, // 35
+                    witness.instruction.rs2, // 36
+                    witness.instruction.funct3, // 37
+                    witness.instruction.funct7, // 38
+                    witness.instruction.imm, // 39
+                    witness.memory.address, // 40
+                    witness.memory.value, // 41
+                    witness.memory.is_read, // 42
+                };
 
-            // Commit to all 43 polynomials
+            // Commit to all 43 polynomials and store trees for later opening
             const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const MerkleTree = merkle_tree.SimpleMerkleTree(F, hash.SHA3Hasher);
+
+            // Allocate temporary storage for trees (needed for opening proofs)
+            var trees: [43]MerkleTree = undefined;
+            var trees_initialized: usize = 0;
+            errdefer {
+                for (trees[0..trees_initialized]) |tree| {
+                    tree.deinit();
+                }
+            }
+
             for (polynomials, 0..) |poly, i| {
                 const result = try Scheme.commit(poly, self.allocator);
-                defer result.tree.deinit();
+                trees[i] = result.tree;
+                trees_initialized += 1;
                 proof.witness_commitments[i].commitment = result.commitment.commitment;
             }
 
@@ -395,7 +407,7 @@ pub fn Prover(comptime F: type) type {
                 self.transcript.appendBytes(&commitment.commitment);
             }
 
-            // PHASE 3: Derive opening challenges from transcript
+            // PHASE 3: Derive opening challenges from transcript and generate opening proofs
             // Now that all commitments are bound, derive evaluation points
             for (polynomials, 0..) |poly, i| {
                 for (proof.witness_commitments[i].point, 0..) |*coord, j| {
@@ -405,6 +417,25 @@ pub fn Prover(comptime F: type) type {
 
                 // Evaluate polynomial at challenge point
                 proof.witness_commitments[i].value = try poly.eval(proof.witness_commitments[i].point[0..]);
+
+                // Generate Merkle opening proof
+                // The opening proof demonstrates the claimed evaluation is consistent with commitment
+                const opening_proof = try Scheme.open(poly, trees[i], proof.witness_commitments[i].point, self.allocator);
+
+                // Free the old empty proof and replace with real one
+                // Note: The old proof.point shares memory with witness_commitments[i].point,
+                // so we need to update the pointer after replacement
+                proof.witness_commitments[i].proof.deinit(self.allocator);
+                proof.witness_commitments[i].proof = opening_proof;
+
+                // Update the CommitmentOpening's point to reference the new proof's point
+                // This ensures consistency after the memory replacement
+                proof.witness_commitments[i].point = opening_proof.point;
+            }
+
+            // Clean up trees (no longer needed after opening proofs generated)
+            for (trees[0..trees_initialized]) |tree| {
+                tree.deinit();
             }
 
             // PHASE 4: Bind ALL opening claims (evaluation values) to transcript

@@ -272,20 +272,23 @@ pub fn Verifier(comptime F: type) type {
             opening: proof_mod.CommitmentOpening(F),
         ) !proof_mod.VerificationResult {
             _ = self;
-            _ = opening;
-            // TODO: The prover doesn't generate real Merkle opening proofs yet.
-            // Once the prover populates opening.proof with a valid Merkle path,
-            // enable this verification:
-            //
-            // const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
-            // const poly_commit = polynomial_commit.PolynomialCommitment(F).init(
-            //     opening.commitment,
-            //     opening.point.len,
-            // );
-            // const verified = Scheme.verify(poly_commit, opening.proof);
-            // if (!verified) {
-            //     return .RejectInvalidCommitment;
-            // }
+
+            // Check that the claimed evaluation value matches the proof's value
+            // This prevents tampering with the opening claim without regenerating the proof
+            if (!opening.value.eql(opening.proof.value)) {
+                return .RejectInvalidCommitment;
+            }
+
+            // Verify Merkle proof for this opening
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const poly_commit = polynomial_commit.PolynomialCommitment(F).init(
+                opening.commitment,
+                opening.point.len,
+            );
+            const verified = Scheme.verify(poly_commit, opening.proof);
+            if (!verified) {
+                return .RejectInvalidCommitment;
+            }
 
             return .Accept;
         }

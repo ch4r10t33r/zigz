@@ -8,6 +8,7 @@ const lasso_prover = @import("../lookups/lasso_prover.zig");
 const witness_gen = @import("../constraints/witness.zig");
 const constraint_builder = @import("../constraints/builder.zig");
 const vm = @import("../vm/state.zig");
+const elf_mod = @import("../elf.zig");
 const proof_mod = @import("proof.zig");
 const hash = @import("../core/hash.zig");
 
@@ -61,10 +62,11 @@ pub fn Prover(comptime F: type) type {
         /// Generate a complete proof for a RISC-V program
         ///
         /// Arguments:
-        /// - program: RISC-V bytecode
+        /// - program: Program bytes (raw binary or full ELF; used for transcript binding)
         /// - entry_pc: Initial program counter
         /// - initial_regs: Initial register values (optional)
         /// - max_steps: Maximum execution steps (for safety)
+        /// - segments: If set, VM is initialized from ELF PT_LOAD segments; otherwise program is loaded at entry_pc
         ///
         /// Returns: Complete proof or error
         pub fn prove(
@@ -73,6 +75,7 @@ pub fn Prover(comptime F: type) type {
             entry_pc: u64,
             initial_regs: ?[]const u64,
             max_steps: usize,
+            segments: ?[]const elf_mod.Segment,
         ) !Proof {
             std.debug.print("\n=== zkVM Prover ===\n", .{});
             std.debug.print("Field: {s} (modulus = {d})\n", .{ @typeName(F), F.MODULUS });
@@ -109,7 +112,10 @@ pub fn Prover(comptime F: type) type {
             // ================================================================
             std.debug.print("\n[1/6] Executing program...\n", .{});
 
-            var vm_state = try VMState.init(self.allocator, program, entry_pc);
+            var vm_state: VMState = if (segments) |segs|
+                try VMState.initFromSegments(self.allocator, segs, entry_pc)
+            else
+                try VMState.init(self.allocator, program, entry_pc);
             defer vm_state.deinit();
 
             // Initialize registers if provided
@@ -575,7 +581,7 @@ test "prover: simple program proof" {
     };
 
     // Generate proof
-    var proof = try prover.prove(&program, 0x1000, null, 100);
+    var proof = try prover.prove(&program, 0x1000, null, 100, null);
     defer proof.deinit();
 
     // Verify proof structure
@@ -601,7 +607,7 @@ test "prover: proof size estimation" {
         0x00, 0x00, 0x00, 0x00, // Halt
     };
 
-    var proof = try prover.prove(&program, 0x1000, null, 100);
+    var proof = try prover.prove(&program, 0x1000, null, 100, null);
     defer proof.deinit();
 
     const size = proof.estimateSize();

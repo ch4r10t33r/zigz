@@ -30,6 +30,9 @@ zigz is a zkVM (zero-knowledge virtual machine) that allows you to generate succ
 - ✅ Full verifier with O(log n) verification time
 - ✅ Security hardening: Fiat-Shamir vulnerability fixes (Jolt PR #981)
 - ✅ Comprehensive integration tests
+- ✅ **CLI**: `execute`, `prove`, `verify` with file I/O
+- ✅ **ELF loading**: load RISC-V ELF (entry + PT_LOAD segments); no manual `--entry` for ELF inputs
+- ✅ **Project workflow**: `zigz new` (template) and `zigz build` (RISC-V ELF)
 
 ---
 
@@ -91,9 +94,89 @@ zig build test
 ### Quick Example
 
 ```bash
-# Run zigz (currently prints banner)
+# Build and run the CLI
 zig build run
+
+# Execute a RISC-V program (no proof)
+zig build run -- execute program.bin --entry 0x1000
+zig build run -- execute program.elf   # ELF: entry and segments from file
+
+# Generate a proof
+zig build run -- prove program.bin --entry 0x1000 --out proof.bin
+zig build run -- prove program.elf --out proof.bin
+
+# Verify a proof
+zig build run -- verify proof.bin program.bin
 ```
+
+### Creating and Building a RISC-V Project
+
+```bash
+# Create a new project (Zig source, RISC-V target)
+zig build run -- new myapp
+cd myapp
+
+# Build the program (produces ELF at zig-out/bin/program)
+zig build
+# Or from outside: zig build run -- build myapp
+
+# Run and prove the built ELF
+zig build run -- execute zig-out/bin/program --max-steps 10000
+zig build run -- prove zig-out/bin/program --out proof.bin
+```
+
+See [Usage](#usage) for all CLI options.
+
+---
+
+## Usage
+
+The zigz CLI supports five subcommands. Program input can be **raw RISC-V bytecode** (`.bin`) or a **RISC-V ELF** (`.elf`); for ELF files the entry point and loadable segments are read from the file.
+
+| Command | Description |
+|--------|-------------|
+| `zigz execute <program>` | Run the VM on the program (no proof). Prints step count. |
+| `zigz prove <program> [options]` | Generate a proof of execution. Optionally write proof with `--out <file>`. |
+| `zigz verify <proof> <program>` | Verify a proof against the program. Prints Accept/Reject. |
+| `zigz new <name>` | Create a new RISC-V project template in directory `<name>`. |
+| `zigz build [path]` | Run `zig build` in the project (default: current directory). Output: `<path>/zig-out/bin/program`. |
+
+### Execute
+
+```bash
+zigz execute program.bin [--entry 0x1000] [--max-steps N]
+zigz execute program.elf [--max-steps N]   # entry from ELF
+```
+
+- **Raw `.bin`**: You must pass `--entry` (default `0x1000`) so the VM knows where to start.
+- **ELF**: Entry point and PT_LOAD segments are read from the file; `--entry` is ignored.
+
+### Prove
+
+```bash
+zigz prove program.bin [--entry 0x1000] [--max-steps N] [--out proof.bin]
+zigz prove program.elf [--max-steps N] [--out proof.bin]
+```
+
+- Proof is bound to the **exact program bytes** (full file: ELF or raw binary). Use the same file when verifying.
+
+### Verify
+
+```bash
+zigz verify proof.bin program.bin
+zigz verify proof.bin program.elf
+```
+
+- The program file must match the one used to generate the proof.
+
+### New and Build
+
+- **`zigz new <name>`** creates a directory with:
+  - `build.zig` — builds a RISC-V 64-bit Linux ELF named `program`.
+  - `src/main.zig` — minimal Zig program.
+- **`zigz build [path]`** runs `zig build` in `<path>` (default `.`). The template produces `zig-out/bin/program` (ELF).
+
+The template binary is a full RISC-V Linux executable; for minimal provable programs (e.g. few instructions) use raw bytecode or a freestanding target.
 
 ---
 

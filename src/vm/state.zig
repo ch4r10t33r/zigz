@@ -1,5 +1,6 @@
 const std = @import("std");
 const rv64i = @import("../isa/rv64i.zig");
+const elf = @import("../elf.zig");
 const RegisterFile = @import("registers.zig").RegisterFile;
 const Memory = @import("memory.zig").Memory;
 const LoadSize = @import("memory.zig").LoadSize;
@@ -61,6 +62,28 @@ pub const VMState = struct {
 
         return Self{
             .pc = start_pc,
+            .regs = RegisterFile.init(),
+            .memory = memory,
+            .trace = ExecutionTrace.init(allocator),
+            .step_count = 0,
+            .halted = false,
+            .allocator = allocator,
+        };
+    }
+
+    /// Initialize VM from ELF PT_LOAD segments (e.g. from elf.load()).
+    /// entry_pc is the initial program counter (e_entry).
+    pub fn initFromSegments(
+        allocator: std.mem.Allocator,
+        segments: []const elf.Segment,
+        entry_pc: u64,
+    ) !Self {
+        var memory = Memory.init(allocator);
+        for (segments) |seg| {
+            try memory.loadProgram(seg.vaddr, seg.data);
+        }
+        return Self{
+            .pc = entry_pc,
             .regs = RegisterFile.init(),
             .memory = memory,
             .trace = ExecutionTrace.init(allocator),

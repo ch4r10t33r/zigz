@@ -14,7 +14,6 @@ const std = @import("std");
 ///
 /// This implementation uses dense representation: store all 2^v evaluations
 /// on the boolean hypercube.
-
 /// Multilinear polynomial over a finite field
 ///
 /// Represents a multilinear polynomial by its evaluations on {0,1}^v
@@ -438,23 +437,29 @@ test "multilinear: partial evaluation" {
     const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
-    // 2-variable polynomial
+    // 2-variable polynomial with indexing: index = x1 * 2 + x2
+    // Index 0 (00): p(0,0) = 1
+    // Index 1 (01): p(0,1) = 2
+    // Index 2 (10): p(1,0) = 3
+    // Index 3 (11): p(1,1) = 4
     const evals = [_]F{
-        F.init(1), // p(0,0) = 1
-        F.init(2), // p(1,0) = 2
-        F.init(3), // p(0,1) = 3
-        F.init(4), // p(1,1) = 4
+        F.init(1), // p(0,0)
+        F.init(2), // p(0,1)
+        F.init(3), // p(1,0)
+        F.init(4), // p(1,1)
     };
     var p = try MLE.init(testing.allocator, &evals);
     defer p.deinit();
 
-    // Fix first variable to 0: should get q(x) where q(0) = 1, q(1) = 3
+    // Fix first variable to 0: q(x2) = p(0, x2)
+    // q(0) = p(0,0) = 1
+    // q(1) = p(0,1) = 2
     var q = try p.partialEval(F.zero(), testing.allocator);
     defer q.deinit();
 
     try testing.expectEqual(@as(usize, 1), q.num_vars);
-    try testing.expect(q.evaluations[0].eql(F.init(1))); // q(0)
-    try testing.expect(q.evaluations[1].eql(F.init(3))); // q(1)
+    try testing.expect(q.evaluations[0].eql(F.init(1))); // q(0) = p(0,0)
+    try testing.expect(q.evaluations[1].eql(F.init(2))); // q(1) = p(0,1)
 }
 
 test "multilinear: sum over hypercube" {
@@ -475,7 +480,11 @@ test "multilinear: round polynomial" {
     const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
-    // 2-variable polynomial: evals = [1, 2, 3, 4]
+    // 2-variable polynomial with indexing: index = x1 * 2 + x2
+    // Index 0: p(0,0) = 1
+    // Index 1: p(0,1) = 2
+    // Index 2: p(1,0) = 3
+    // Index 3: p(1,1) = 4
     const evals = [_]F{ F.init(1), F.init(2), F.init(3), F.init(4) };
     var p = try MLE.init(testing.allocator, &evals);
     defer p.deinit();
@@ -483,13 +492,13 @@ test "multilinear: round polynomial" {
     const coeffs = try p.roundPolynomial(testing.allocator);
     defer testing.allocator.free(coeffs);
 
-    // Round polynomial q(X) sums over second variable
-    // q(0) = p(0,0) + p(0,1) = 1 + 3 = 4
-    // q(1) = p(1,0) + p(1,1) = 2 + 4 = 6
-    // So q(X) = 4 + 2X
+    // Round polynomial q(X) sums over second variable (x2)
+    // q(0) = p(0,0) + p(0,1) = 1 + 2 = 3  (first half of evals)
+    // q(1) = p(1,0) + p(1,1) = 3 + 4 = 7  (second half of evals)
+    // So q(X) = 3 + 4X  (since q(X) = q(0) + X*(q(1) - q(0)) = 3 + 4X)
 
-    try testing.expect(coeffs[0].eql(F.init(4))); // Constant term
-    try testing.expect(coeffs[1].eql(F.init(2))); // Linear coefficient
+    try testing.expect(coeffs[0].eql(F.init(3))); // Constant term = q(0)
+    try testing.expect(coeffs[1].eql(F.init(4))); // Linear coefficient = q(1) - q(0)
 
     // Verify: q(0) + q(1) should equal total sum
     const sum = coeffs[0].add(coeffs[0].add(coeffs[1]));

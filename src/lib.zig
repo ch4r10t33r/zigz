@@ -17,6 +17,7 @@ pub const lookups = @import("lookups/lasso_prover.zig");
 pub const commitments = @import("commitments/polynomial_commit.zig");
 
 // VM and constraints
+pub const elf = @import("elf.zig");
 pub const vm_state = @import("vm/state.zig");
 pub const witness = @import("constraints/witness.zig");
 pub const constraints = @import("constraints/builder.zig");

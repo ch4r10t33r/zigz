@@ -11,7 +11,16 @@ pub fn build(b: *std.Build) void {
     });
     const hash_zig_mod = hash_zig_dep.module("hash-zig");
 
-    // -- main executable (for experimentation / demos) --
+    // -- zigz library (needed by main exe for CLI prove/verify) --
+    const zigz_lib = b.addStaticLibrary(.{
+        .name = "zigz",
+        .root_source_file = b.path("src/lib.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    zigz_lib.root_module.addImport("hash-zig", hash_zig_mod);
+
+    // -- main executable (CLI: execute | prove | verify) --
     const exe = b.addExecutable(.{
         .name = "zigz",
         .root_source_file = b.path("src/main.zig"),
@@ -19,6 +28,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("hash-zig", hash_zig_mod);
+    exe.root_module.addImport("zigz", zigz_lib.root_module);
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -29,16 +39,7 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run zigz");
     run_step.dependOn(&run_cmd.step);
 
-    // -- zigz library module (for examples; uses path-based imports under src/) --
-    const zigz_lib = b.addStaticLibrary(.{
-        .name = "zigz",
-        .root_source_file = b.path("src/lib.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    zigz_lib.root_module.addImport("hash-zig", hash_zig_mod);
-
-    // -- example executables --
+    // -- example executables (use zigz library) --
     const example_sources = .{
         .{ "sumcheck_basic", "examples/sumcheck_basic.zig" },
         .{ "sumcheck_dishonest", "examples/sumcheck_dishonest.zig" },
@@ -67,6 +68,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     unit_tests.root_module.addImport("hash-zig", hash_zig_mod);
+    unit_tests.root_module.addImport("zigz", zigz_lib.root_module);
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);

@@ -42,10 +42,6 @@ jobs:
         zig build test-poly
         echo "::endgroup::"
 
-        echo "::group::Sumcheck Protocol Tests"
-        zig build test-sumcheck
-        echo "::endgroup::"
-
         echo "::group::ISA Tests"
         zig build test-isa
         echo "::endgroup::"

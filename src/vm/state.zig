@@ -149,7 +149,11 @@ pub const VMState = struct {
                 // FENCE instructions - no-op in our VM
                 return self.pc + 4;
             },
-            .LOAD_FP, .STORE_FP, .AMO, .OP_FP, .MADD, .MSUB, .NMSUB, .NMADD, _ => {
+            .LOAD_FP, .STORE_FP, .AMO, .OP_FP, .MADD, .MSUB, .NMSUB, .NMADD => {
+                std.debug.print("Unimplemented opcode: {}\n", .{inst.opcode});
+                return error.UnimplementedInstruction;
+            },
+            else => {
                 std.debug.print("Unimplemented opcode: {}\n", .{inst.opcode});
                 return error.UnimplementedInstruction;
             },
@@ -184,7 +188,7 @@ pub const VMState = struct {
                     const a: u128 = rs1_val;
                     const b: u128 = rs2_val;
                     const product: u128 = a *% b;
-                    break :blk @truncate(product >> 64);
+                    break :blk @as(u64, @truncate(product >> 64));
                 },
                 0b100 => blk: { // DIV - signed division
                     const a: i64 = @bitCast(rs1_val);
@@ -194,9 +198,9 @@ pub const VMState = struct {
                     }
                     // Handle overflow: INT64_MIN / -1
                     if (a == std.math.minInt(i64) and b == -1) {
-                        break :blk @bitCast(a); // Return dividend
+                        break :blk @as(u64, @bitCast(a)); // Return dividend
                     }
-                    break :blk @bitCast(a / b);
+                    break :blk @as(u64, @bitCast(@divTrunc(a, b)));
                 },
                 0b101 => blk: { // DIVU - unsigned division
                     if (rs2_val == 0) {
@@ -214,7 +218,7 @@ pub const VMState = struct {
                     if (a == std.math.minInt(i64) and b == -1) {
                         break :blk 0;
                     }
-                    break :blk @bitCast(@rem(a, b));
+                    break :blk @as(u64, @bitCast(@rem(a, b)));
                 },
                 0b111 => blk: { // REMU - unsigned remainder
                     if (rs2_val == 0) {
@@ -275,9 +279,9 @@ pub const VMState = struct {
                     }
                     // Handle overflow: INT32_MIN / -1
                     if (a == std.math.minInt(i32) and b == -1) {
-                        break :blk @bitCast(a); // Return dividend
+                        break :blk @as(u32, @bitCast(a)); // Return dividend
                     }
-                    break :blk @bitCast(a / b);
+                    break :blk @as(u32, @bitCast(@divTrunc(a, b)));
                 },
                 0b101 => blk: { // DIVUW - unsigned division
                     if (rs2_val == 0) {
@@ -295,7 +299,7 @@ pub const VMState = struct {
                     if (a == std.math.minInt(i32) and b == -1) {
                         break :blk 0;
                     }
-                    break :blk @bitCast(@rem(a, b));
+                    break :blk @as(u32, @bitCast(@rem(a, b)));
                 },
                 0b111 => blk: { // REMUW - unsigned remainder
                     if (rs2_val == 0) {

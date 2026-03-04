@@ -146,6 +146,8 @@ pub const Instruction = struct {
     pub fn decode(inst: u32) !Instruction {
         // Extract opcode (bits [6:0])
         const opcode_bits = @as(u7, @truncate(inst & 0x7F));
+        // Reject illegal opcode 0 (e.g. fetch from unmapped memory past end of program)
+        if (opcode_bits == 0) return error.InvalidInstruction;
         const opcode = @as(Opcode, @enumFromInt(opcode_bits));
 
         // Extract common fields

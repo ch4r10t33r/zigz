@@ -53,12 +53,13 @@ pub fn main() !void {
 
     std.debug.print("Step 2: Generating proof...\n", .{});
 
-    var prover = try zigz.Prover(F).init(allocator);
+    var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
     const start_time = std.time.milliTimestamp();
 
-    var proof = try prover.prove(&program, entry_pc, null);
+    const max_steps = 1 << 20;
+    var proof = try prover.prove(&program, entry_pc, null, max_steps);
     defer proof.deinit();
 
     const prove_time_ms = std.time.milliTimestamp() - start_time;
@@ -158,7 +159,7 @@ pub fn main() !void {
     std.debug.print("=== Performance Summary ===\n\n", .{});
 
     std.debug.print("Prover time: {d} ms\n", .{prove_time_ms});
-    std.debug.print("Verifier time: {d} ms ({d:.1f}x faster)\n", .{
+    std.debug.print("Verifier time: {d} ms ({d:.1}x faster)\n", .{
         verify_time_ms,
         @as(f64, @floatFromInt(prove_time_ms)) / @as(f64, @floatFromInt(verify_time_ms)),
     });

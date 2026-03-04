@@ -244,10 +244,43 @@ pub fn buildSparseConditionalTable(comptime F: type, allocator: std.mem.Allocato
 // ============================================================================
 
 const testing = std.testing;
-const field = @import("../core/field.zig");
+
+/// Test field (F_17) inline so tests compile when this file is built as a dependency with a single-file test root.
+fn TestField(comptime T: type, comptime modulus: T) type {
+    return struct {
+        value: T,
+        const Self = @This();
+        pub const MODULUS: T = modulus;
+        pub fn init(val: T) Self {
+            return Self{ .value = @mod(val, MODULUS) };
+        }
+        pub fn zero() Self {
+            return Self{ .value = 0 };
+        }
+        pub fn one() Self {
+            return Self{ .value = 1 };
+        }
+        pub fn isZero(self: Self) bool {
+            return self.value == 0;
+        }
+        pub fn add(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + other.value, MODULUS) };
+        }
+        pub fn sub(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + MODULUS - other.value, MODULUS) };
+        }
+        pub fn mul(self: Self, other: Self) Self {
+            const wide: u128 = @as(u128, self.value) * @as(u128, other.value);
+            return Self{ .value = @intCast(@mod(wide, MODULUS)) };
+        }
+        pub fn eql(self: Self, other: Self) bool {
+            return self.value == other.value;
+        }
+    };
+}
 
 test "table_builder: dense table creation" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try DenseTable(F).init(testing.allocator, 2, 1, 4);
     defer table.deinit();
@@ -258,7 +291,7 @@ test "table_builder: dense table creation" {
 }
 
 test "table_builder: add table 2-bit" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try buildAddTable(F, testing.allocator, 2);
     defer table.deinit();
@@ -274,7 +307,7 @@ test "table_builder: add table 2-bit" {
 }
 
 test "table_builder: xor table 3-bit" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try buildXorTable(F, testing.allocator, 3);
     defer table.deinit();
@@ -290,7 +323,7 @@ test "table_builder: xor table 3-bit" {
 }
 
 test "table_builder: and table 2-bit" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try buildAndTable(F, testing.allocator, 2);
     defer table.deinit();
@@ -303,7 +336,7 @@ test "table_builder: and table 2-bit" {
 }
 
 test "table_builder: sparse table" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try buildSparseConditionalTable(F, testing.allocator);
     defer table.deinit();
@@ -321,7 +354,7 @@ test "table_builder: sparse table" {
 }
 
 test "table_builder: lookup miss" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     var table = try buildAddTable(F, testing.allocator, 2);
     defer table.deinit();
@@ -333,7 +366,7 @@ test "table_builder: lookup miss" {
 }
 
 test "table_builder: table entry lifecycle" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
 
     const inputs = try testing.allocator.alloc(F, 2);
     inputs[0] = F.init(1);

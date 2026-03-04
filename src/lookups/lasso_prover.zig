@@ -275,10 +275,43 @@ pub fn LassoProver(comptime F: type) type {
 // ============================================================================
 
 const testing = std.testing;
-const field = @import("../core/field.zig");
+
+/// Test field (F_17) inline so tests compile when this file is the test root (e.g. CI with --test-filter).
+fn TestField(comptime T: type, comptime modulus: T) type {
+    return struct {
+        value: T,
+        const Self = @This();
+        pub const MODULUS: T = modulus;
+        pub fn init(val: T) Self {
+            return Self{ .value = @mod(val, MODULUS) };
+        }
+        pub fn zero() Self {
+            return Self{ .value = 0 };
+        }
+        pub fn one() Self {
+            return Self{ .value = 1 };
+        }
+        pub fn isZero(self: Self) bool {
+            return self.value == 0;
+        }
+        pub fn add(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + other.value, MODULUS) };
+        }
+        pub fn sub(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + MODULUS - other.value, MODULUS) };
+        }
+        pub fn mul(self: Self, other: Self) Self {
+            const wide: u128 = @as(u128, self.value) * @as(u128, other.value);
+            return Self{ .value = @intCast(@mod(wide, MODULUS)) };
+        }
+        pub fn eql(self: Self, other: Self) bool {
+            return self.value == other.value;
+        }
+    };
+}
 
 test "lasso_prover: simple lookup proof" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
     const Query = LookupQuery(F);
 
@@ -318,7 +351,7 @@ test "lasso_prover: simple lookup proof" {
 }
 
 test "lasso_prover: proof with mapping" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
     const Query = LookupQuery(F);
 
@@ -350,7 +383,7 @@ test "lasso_prover: proof with mapping" {
 }
 
 test "lasso_prover: invalid mapping detection" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
     const Query = LookupQuery(F);
 
@@ -380,7 +413,7 @@ test "lasso_prover: invalid mapping detection" {
 }
 
 test "lasso_prover: multiple queries" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
     const Query = LookupQuery(F);
 
@@ -419,7 +452,7 @@ test "lasso_prover: multiple queries" {
 }
 
 test "lasso_prover: hash consistency" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
 
     const inputs = try testing.allocator.alloc(F, 2);
@@ -444,7 +477,7 @@ test "lasso_prover: hash consistency" {
 }
 
 test "lasso_prover: commitment determinism" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const Prover = LassoProver(F);
     const Multilinear = multilinear.Multilinear(F);
 

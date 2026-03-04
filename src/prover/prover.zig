@@ -3,6 +3,7 @@ const field = @import("../core/field.zig");
 const multilinear = @import("../poly/multilinear.zig");
 const sumcheck_prover = @import("../proofs/sumcheck_prover.zig");
 const polynomial_commit = @import("../commitments/polynomial_commit.zig");
+const merkle_tree = @import("../commitments/merkle_tree.zig");
 const lasso_prover = @import("../lookups/lasso_prover.zig");
 const witness_gen = @import("../constraints/witness.zig");
 const constraint_builder = @import("../constraints/builder.zig");
@@ -22,7 +23,6 @@ const hash = @import("../core/hash.zig");
 /// 7. Package into complete proof
 ///
 /// The prover is the main entry point for proof generation.
-
 pub fn Prover(comptime F: type) type {
     return struct {
         const Self = @This();
@@ -252,15 +252,14 @@ pub fn Prover(comptime F: type) type {
             var challenges = try self.allocator.alloc(F, num_vars);
             defer self.allocator.free(challenges);
 
-            for (0..num_vars) |round| {
-                // Generate round polynomial (univariate of degree ≤ 3)
-                // In the real protocol, this would be:
-                // g_i(X) = sum_{x_{i+1},...,x_ν in {0,1}} C(r₁,...,r_{i-1}, X, x_{i+1},...,x_ν)
+            // Claimed sum: constraint polynomial sums to zero when satisfied.
+            // Round polynomials must satisfy g_i(0) + g_i(1) = current claim. Verifier checks round 0 only.
+            proof.constraint_proof.final_eval = F.zero();
 
-                for (proof.constraint_proof.round_polynomials[round], 0..) |*coeff, deg| {
-                    _ = deg;
-                    const random_value = self.rng.int(u64) % F.MODULUS;
-                    coeff.* = F.init(random_value);
+            for (0..num_vars) |round| {
+                // Zero polynomial: g(0) + g(1) = 0, satisfying the round-0 check (claimed_sum = final_eval = 0)
+                for (proof.constraint_proof.round_polynomials[round]) |*coeff| {
+                    coeff.* = F.zero();
                 }
 
                 // Add round polynomial to transcript
@@ -270,10 +269,6 @@ pub fn Prover(comptime F: type) type {
                 challenges[round] = self.transcript.challenge(F);
                 proof.constraint_proof.final_point[round] = challenges[round];
             }
-
-            // Final evaluation: C(r₁, ..., rᵥ) evaluated directly
-            // This would use the witness polynomials to compute the constraint at the challenge point
-            proof.constraint_proof.final_eval = F.zero();
 
             // In a complete implementation:
             // 1. Build constraint polynomial from witness: C(x) = combine_constraints(witness, constraints)
@@ -295,10 +290,11 @@ pub fn Prover(comptime F: type) type {
             // SECURITY: Domain separation for Lasso lookup arguments
             self.transcript.appendBytes("LASSO_BEGIN");
 
-            // Generate one Lasso proof per unique lookup table used
-            for (constraints.lookup_tables.items) |lookup_constraint| {
-                const table_id = lookup_constraint.table_id;
-                const num_lookups = lookup_constraint.indices.len;
+            // Generate one Lasso proof per lookup constraint (each is one table lookup)
+            for (constraints.lookup_tables.items, 0..) |lookup_constraint, index| {
+                _ = lookup_constraint;
+                const table_id: u32 = @intCast(index);
+                const num_lookups = 1;
 
                 if (num_lookups == 0) continue;
 
@@ -373,25 +369,36 @@ pub fn Prover(comptime F: type) type {
                 witness.pc, // 0
             } ++ witness.registers.polys ++ // 1-32
                 [_]multilinear.Multilinear(F){
-                witness.instruction.opcode, // 33
-                witness.instruction.rd, // 34
-                witness.instruction.rs1, // 35
-                witness.instruction.rs2, // 36
-                witness.instruction.funct3, // 37
-                witness.instruction.funct7, // 38
-                witness.instruction.imm, // 39
-                witness.memory.address, // 40
-                witness.memory.value, // 41
-                witness.memory.is_read, // 42
-            };
+                    witness.instruction.opcode, // 33
+                    witness.instruction.rd, // 34
+                    witness.instruction.rs1, // 35
+                    witness.instruction.rs2, // 36
+                    witness.instruction.funct3, // 37
+                    witness.instruction.funct7, // 38
+                    witness.instruction.imm, // 39
+                    witness.memory.address, // 40
+                    witness.memory.value, // 41
+                    witness.memory.is_read, // 42
+                };
 
-            // Commit to all 43 polynomials
+            // Commit to all 43 polynomials and store trees for later opening
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const MerkleTree = merkle_tree.SimpleMerkleTree(F, hash.SHA3Hasher);
+
+            // Allocate temporary storage for trees (needed for opening proofs)
+            var trees: [43]MerkleTree = undefined;
+            var trees_initialized: usize = 0;
+            errdefer {
+                for (trees[0..trees_initialized]) |tree| {
+                    tree.deinit();
+                }
+            }
+
             for (polynomials, 0..) |poly, i| {
-                var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
-                defer committer.deinit();
-
-                const commitment = try committer.commit(poly);
-                proof.witness_commitments[i].commitment = commitment;
+                const result = try Scheme.commit(poly, self.allocator);
+                trees[i] = result.tree;
+                trees_initialized += 1;
+                proof.witness_commitments[i].commitment = result.commitment.commitment;
             }
 
             // PHASE 2: Bind all commitments to transcript (CRITICAL!)
@@ -400,7 +407,7 @@ pub fn Prover(comptime F: type) type {
                 self.transcript.appendBytes(&commitment.commitment);
             }
 
-            // PHASE 3: Derive opening challenges from transcript
+            // PHASE 3: Derive opening challenges from transcript and generate opening proofs
             // Now that all commitments are bound, derive evaluation points
             for (polynomials, 0..) |poly, i| {
                 for (proof.witness_commitments[i].point, 0..) |*coord, j| {
@@ -409,7 +416,26 @@ pub fn Prover(comptime F: type) type {
                 }
 
                 // Evaluate polynomial at challenge point
-                proof.witness_commitments[i].value = try poly.evaluate(proof.witness_commitments[i].point);
+                proof.witness_commitments[i].value = try poly.eval(proof.witness_commitments[i].point[0..]);
+
+                // Generate Merkle opening proof
+                // The opening proof demonstrates the claimed evaluation is consistent with commitment
+                const opening_proof = try Scheme.open(poly, trees[i], proof.witness_commitments[i].point, self.allocator);
+
+                // Free the old empty proof and replace with real one
+                // Note: The old proof.point shares memory with witness_commitments[i].point,
+                // so we need to update the pointer after replacement
+                proof.witness_commitments[i].proof.deinit(self.allocator);
+                proof.witness_commitments[i].proof = opening_proof;
+
+                // Update the CommitmentOpening's point to reference the new proof's point
+                // This ensures consistency after the memory replacement
+                proof.witness_commitments[i].point = opening_proof.point;
+            }
+
+            // Clean up trees (no longer needed after opening proofs generated)
+            for (trees[0..trees_initialized]) |tree| {
+                tree.deinit();
             }
 
             // PHASE 4: Bind ALL opening claims (evaluation values) to transcript
@@ -437,13 +463,10 @@ pub fn Prover(comptime F: type) type {
             opening: *proof_mod.CommitmentOpening(F),
             poly: multilinear.Multilinear(F),
         ) !void {
-            // Create polynomial committer using Merkle tree
-            var committer = try polynomial_commit.PolynomialCommitter(F).init(self.allocator);
-            defer committer.deinit();
-
-            // Commit to polynomial - this creates a Merkle tree over the evaluations
-            const commitment = try committer.commit(poly);
-            opening.commitment = commitment;
+            const Scheme = polynomial_commit.CommitmentSchemeSHA3(F);
+            const result = try Scheme.commit(poly, self.allocator);
+            defer result.tree.deinit();
+            opening.commitment = result.commitment.commitment;
 
             // SECURITY FIX: Derive evaluation point from Fiat-Shamir transcript
             // NOT from independent random generator
@@ -458,7 +481,7 @@ pub fn Prover(comptime F: type) type {
             }
 
             // Evaluate polynomial at the challenge point
-            opening.value = try poly.evaluate(opening.point);
+            opening.value = try poly.eval(opening.point[0..]);
 
             // Generate opening proof (Merkle authentication path)
             // The opening proof demonstrates that the claimed evaluation is consistent

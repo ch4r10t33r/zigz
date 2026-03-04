@@ -18,7 +18,6 @@ const multilinear = @import("../poly/multilinear.zig");
 /// - Verification time: O(log n)
 /// - No trusted setup ✅
 /// - Post-quantum secure ✅
-
 pub const Commitment = [32]u8;
 
 /// Polynomial commitment
@@ -95,7 +94,7 @@ pub fn CommitmentScheme(comptime F: type, comptime HashFn: type) type {
             }
 
             // Evaluate polynomial at point
-            const value = poly.eval(point);
+            const value = try poly.eval(point);
 
             // For Merkle tree opening, we need to map the point to an index
             // in the boolean hypercube. For simplicity, we use index 0

@@ -12,6 +12,10 @@ pub const multilinear = @import("poly/multilinear.zig");
 pub const sumcheck_prover = @import("proofs/sumcheck_prover.zig");
 pub const sumcheck_verifier = @import("proofs/sumcheck_verifier.zig");
 
+// Lookups and commitments
+pub const lookups = @import("lookups/lasso_prover.zig");
+pub const commitments = @import("commitments/polynomial_commit.zig");
+
 // VM and constraints
 pub const vm_state = @import("vm/state.zig");
 pub const witness = @import("constraints/witness.zig");

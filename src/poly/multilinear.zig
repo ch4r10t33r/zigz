@@ -14,7 +14,6 @@ const std = @import("std");
 ///
 /// This implementation uses dense representation: store all 2^v evaluations
 /// on the boolean hypercube.
-
 /// Multilinear polynomial over a finite field
 ///
 /// Represents a multilinear polynomial by its evaluations on {0,1}^v
@@ -298,10 +297,45 @@ pub fn Multilinear(comptime F: type) type {
 // ============================================================================
 
 const testing = std.testing;
-const field = @import("../core/field.zig");
+
+/// Simple test field (F_17) defined inline to avoid cross-module imports
+/// when running tests in isolation via `zig build test-poly`.
+fn TestField(comptime T: type, comptime modulus: T) type {
+    return struct {
+        value: T,
+        const Self = @This();
+        pub const MODULUS: T = modulus;
+
+        pub fn init(val: T) Self {
+            return Self{ .value = @mod(val, MODULUS) };
+        }
+        pub fn zero() Self {
+            return Self{ .value = 0 };
+        }
+        pub fn one() Self {
+            return Self{ .value = 1 };
+        }
+        pub fn isZero(self: Self) bool {
+            return self.value == 0;
+        }
+        pub fn add(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + other.value, MODULUS) };
+        }
+        pub fn sub(self: Self, other: Self) Self {
+            return Self{ .value = @mod(self.value + MODULUS - other.value, MODULUS) };
+        }
+        pub fn mul(self: Self, other: Self) Self {
+            const wide: u128 = @as(u128, self.value) * @as(u128, other.value);
+            return Self{ .value = @intCast(@mod(wide, MODULUS)) };
+        }
+        pub fn eql(self: Self, other: Self) bool {
+            return self.value == other.value;
+        }
+    };
+}
 
 test "multilinear: initialization" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // 2-variable polynomial: 4 evaluations
@@ -314,7 +348,7 @@ test "multilinear: initialization" {
 }
 
 test "multilinear: power of two check" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // Should fail: not a power of 2
@@ -323,7 +357,7 @@ test "multilinear: power of two check" {
 }
 
 test "multilinear: zero polynomial" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     var p = try MLE.zero(testing.allocator, 3); // 3 variables, 8 evaluations
@@ -334,7 +368,7 @@ test "multilinear: zero polynomial" {
 }
 
 test "multilinear: constant polynomial" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     var p = try MLE.constant(testing.allocator, 2, F.init(5));
@@ -347,7 +381,7 @@ test "multilinear: constant polynomial" {
 }
 
 test "multilinear: evaluation at boolean points" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // 2-variable polynomial with known evaluations
@@ -379,7 +413,7 @@ test "multilinear: evaluation at boolean points" {
 }
 
 test "multilinear: evaluation at arbitrary points" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // 1-variable polynomial: p(x) = x
@@ -400,30 +434,36 @@ test "multilinear: evaluation at arbitrary points" {
 }
 
 test "multilinear: partial evaluation" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
-    // 2-variable polynomial
+    // 2-variable polynomial with indexing: index = x1 * 2 + x2
+    // Index 0 (00): p(0,0) = 1
+    // Index 1 (01): p(0,1) = 2
+    // Index 2 (10): p(1,0) = 3
+    // Index 3 (11): p(1,1) = 4
     const evals = [_]F{
-        F.init(1), // p(0,0) = 1
-        F.init(2), // p(1,0) = 2
-        F.init(3), // p(0,1) = 3
-        F.init(4), // p(1,1) = 4
+        F.init(1), // p(0,0)
+        F.init(2), // p(0,1)
+        F.init(3), // p(1,0)
+        F.init(4), // p(1,1)
     };
     var p = try MLE.init(testing.allocator, &evals);
     defer p.deinit();
 
-    // Fix first variable to 0: should get q(x) where q(0) = 1, q(1) = 3
+    // Fix first variable to 0: q(x2) = p(0, x2)
+    // q(0) = p(0,0) = 1
+    // q(1) = p(0,1) = 2
     var q = try p.partialEval(F.zero(), testing.allocator);
     defer q.deinit();
 
     try testing.expectEqual(@as(usize, 1), q.num_vars);
-    try testing.expect(q.evaluations[0].eql(F.init(1))); // q(0)
-    try testing.expect(q.evaluations[1].eql(F.init(3))); // q(1)
+    try testing.expect(q.evaluations[0].eql(F.init(1))); // q(0) = p(0,0)
+    try testing.expect(q.evaluations[1].eql(F.init(2))); // q(1) = p(0,1)
 }
 
 test "multilinear: sum over hypercube" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // 2-variable polynomial: evals = [1, 2, 3, 4]
@@ -437,10 +477,14 @@ test "multilinear: sum over hypercube" {
 }
 
 test "multilinear: round polynomial" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
-    // 2-variable polynomial: evals = [1, 2, 3, 4]
+    // 2-variable polynomial with indexing: index = x1 * 2 + x2
+    // Index 0: p(0,0) = 1
+    // Index 1: p(0,1) = 2
+    // Index 2: p(1,0) = 3
+    // Index 3: p(1,1) = 4
     const evals = [_]F{ F.init(1), F.init(2), F.init(3), F.init(4) };
     var p = try MLE.init(testing.allocator, &evals);
     defer p.deinit();
@@ -448,13 +492,13 @@ test "multilinear: round polynomial" {
     const coeffs = try p.roundPolynomial(testing.allocator);
     defer testing.allocator.free(coeffs);
 
-    // Round polynomial q(X) sums over second variable
-    // q(0) = p(0,0) + p(0,1) = 1 + 3 = 4
-    // q(1) = p(1,0) + p(1,1) = 2 + 4 = 6
-    // So q(X) = 4 + 2X
+    // Round polynomial q(X) sums over second variable (x2)
+    // q(0) = p(0,0) + p(0,1) = 1 + 2 = 3  (first half of evals)
+    // q(1) = p(1,0) + p(1,1) = 3 + 4 = 7  (second half of evals)
+    // So q(X) = 3 + 4X  (since q(X) = q(0) + X*(q(1) - q(0)) = 3 + 4X)
 
-    try testing.expect(coeffs[0].eql(F.init(4))); // Constant term
-    try testing.expect(coeffs[1].eql(F.init(2))); // Linear coefficient
+    try testing.expect(coeffs[0].eql(F.init(3))); // Constant term = q(0)
+    try testing.expect(coeffs[1].eql(F.init(4))); // Linear coefficient = q(1) - q(0)
 
     // Verify: q(0) + q(1) should equal total sum
     const sum = coeffs[0].add(coeffs[0].add(coeffs[1]));
@@ -462,7 +506,7 @@ test "multilinear: round polynomial" {
 }
 
 test "multilinear: addition" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     const evals_p = [_]F{ F.init(1), F.init(2), F.init(3), F.init(4) };
@@ -483,7 +527,7 @@ test "multilinear: addition" {
 }
 
 test "multilinear: scalar multiplication" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     const evals = [_]F{ F.init(1), F.init(2), F.init(3), F.init(4) };
@@ -500,7 +544,7 @@ test "multilinear: scalar multiplication" {
 }
 
 test "multilinear: sumcheck property" {
-    const F = field.Field(u64, 17);
+    const F = TestField(u64, 17);
     const MLE = Multilinear(F);
 
     // Key sumcheck property: sum over hypercube equals q(0) + q(1)

@@ -37,6 +37,8 @@ pub const ConstraintBuilder = struct {
     pub fn deinit(self: *Self) void {
         for (self.constraints.items) |*constraint| {
             constraint.deinit();
+            self.allocator.free(@constCast(constraint.name));
+            self.allocator.free(@constCast(constraint.description));
         }
         self.constraints.deinit();
     }

@@ -15,7 +15,6 @@ const hash_zig = @import("hash-zig");
 ///
 /// For production zkVM use, prefer Poseidon2 for in-circuit operations and
 /// SHA3 only for external commitments or compatibility.
-
 /// Hash digest type (32 bytes / 256 bits)
 pub const Digest = [32]u8;
 
@@ -296,16 +295,24 @@ pub const FiatShamirTranscript = struct {
     }
 
     /// Generate a challenge field element from the current transcript
-    /// This does NOT reset the transcript - you can continue appending
+    ///
+    /// This updates the transcript state by appending the derived challenge,
+    /// ensuring that subsequent challenges are different (proper Fiat-Shamir).
     pub fn challenge(self: *FiatShamirTranscript, comptime F: type) F {
         var digest: Digest = undefined;
 
-        // Clone the hasher to avoid mutating the transcript
+        // Clone the hasher to get the current digest without consuming
         var hasher_copy = self.sha3_hasher;
         hasher_copy.final(&digest);
 
         // Derive field element from digest
-        return digestToFieldElement(F, digest);
+        const result = digestToFieldElement(F, digest);
+
+        // CRITICAL: Update transcript state with the derived challenge
+        // This ensures subsequent challenges are different (proper Fiat-Shamir)
+        self.sha3_hasher.update(&digest);
+
+        return result;
     }
 
     /// Finalize and get the digest (consumes the transcript)

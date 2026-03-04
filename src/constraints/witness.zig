@@ -87,7 +87,9 @@ pub const WitnessGenerator = struct {
             evaluations[i] = last_pc;
         }
 
-        return Multilinear(F).init(self.allocator, evaluations);
+        const poly = try Multilinear(F).init(self.allocator, evaluations);
+        self.allocator.free(evaluations);
+        return poly;
     }
 
     /// Generate register polynomials (one polynomial per register)
@@ -122,6 +124,7 @@ pub const WitnessGenerator = struct {
             }
 
             polys[reg_idx] = try Multilinear(F).init(self.allocator, evaluations);
+            self.allocator.free(evaluations);
         }
 
         return RegisterPolynomials(F){ .polys = polys };
@@ -179,14 +182,36 @@ pub const WitnessGenerator = struct {
             imm_evals[i] = F.zero();
         }
 
+        var opcode_poly = try Multilinear(F).init(self.allocator, opcode_evals);
+        self.allocator.free(opcode_evals);
+        errdefer opcode_poly.deinit();
+        var funct3_poly = try Multilinear(F).init(self.allocator, funct3_evals);
+        self.allocator.free(funct3_evals);
+        errdefer funct3_poly.deinit();
+        var funct7_poly = try Multilinear(F).init(self.allocator, funct7_evals);
+        self.allocator.free(funct7_evals);
+        errdefer funct7_poly.deinit();
+        var rd_poly = try Multilinear(F).init(self.allocator, rd_evals);
+        self.allocator.free(rd_evals);
+        errdefer rd_poly.deinit();
+        var rs1_poly = try Multilinear(F).init(self.allocator, rs1_evals);
+        self.allocator.free(rs1_evals);
+        errdefer rs1_poly.deinit();
+        var rs2_poly = try Multilinear(F).init(self.allocator, rs2_evals);
+        self.allocator.free(rs2_evals);
+        errdefer rs2_poly.deinit();
+        var imm_poly = try Multilinear(F).init(self.allocator, imm_evals);
+        self.allocator.free(imm_evals);
+        errdefer imm_poly.deinit();
+
         return InstructionPolynomial(F){
-            .opcode = try Multilinear(F).init(self.allocator, opcode_evals),
-            .funct3 = try Multilinear(F).init(self.allocator, funct3_evals),
-            .funct7 = try Multilinear(F).init(self.allocator, funct7_evals),
-            .rd = try Multilinear(F).init(self.allocator, rd_evals),
-            .rs1 = try Multilinear(F).init(self.allocator, rs1_evals),
-            .rs2 = try Multilinear(F).init(self.allocator, rs2_evals),
-            .imm = try Multilinear(F).init(self.allocator, imm_evals),
+            .opcode = opcode_poly,
+            .funct3 = funct3_poly,
+            .funct7 = funct7_poly,
+            .rd = rd_poly,
+            .rs1 = rs1_poly,
+            .rs2 = rs2_poly,
+            .imm = imm_poly,
         };
     }
 
@@ -228,10 +253,20 @@ pub const WitnessGenerator = struct {
             is_read_evals[i] = F.zero();
         }
 
+        var address_poly = try Multilinear(F).init(self.allocator, addr_evals);
+        self.allocator.free(addr_evals);
+        errdefer address_poly.deinit();
+        var value_poly = try Multilinear(F).init(self.allocator, value_evals);
+        self.allocator.free(value_evals);
+        errdefer value_poly.deinit();
+        var is_read_poly = try Multilinear(F).init(self.allocator, is_read_evals);
+        self.allocator.free(is_read_evals);
+        errdefer is_read_poly.deinit();
+
         return MemoryPolynomial(F){
-            .address = try Multilinear(F).init(self.allocator, addr_evals),
-            .value = try Multilinear(F).init(self.allocator, value_evals),
-            .is_read = try Multilinear(F).init(self.allocator, is_read_evals),
+            .address = address_poly,
+            .value = value_poly,
+            .is_read = is_read_poly,
         };
     }
 };

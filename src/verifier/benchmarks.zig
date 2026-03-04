@@ -3,6 +3,7 @@ const verifier_mod = @import("verifier.zig");
 const prover_mod = @import("../prover/prover.zig");
 const proof_mod = @import("../prover/proof.zig");
 const field = @import("../core/field.zig");
+const BabyBear = @import("../core/field_presets.zig").BabyBear;
 
 /// Benchmarking utilities for verifier performance measurement
 ///
@@ -57,10 +58,11 @@ pub fn BenchmarkSuite(comptime F: type) type {
             defer self.allocator.free(program);
 
             // Generate proof
-            var prover = try Prover.init(self.allocator);
+            var prover = try Prover.init(self.allocator, 0);
             defer prover.deinit();
 
-            var proof = try prover.prove(program, 0x1000, null);
+            const max_steps = 1 << 20;
+            var proof = try prover.prove(program, 0x1000, null, max_steps);
             defer proof.deinit();
 
             // Measure proof size
@@ -190,8 +192,6 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const BabyBear = @import("../core/field_presets.zig").BabyBear;
-
     std.debug.print("Running zigz verifier benchmarks...\n", .{});
 
     var suite = BenchmarkSuite(BabyBear).init(allocator);
@@ -209,7 +209,6 @@ pub fn main() !void {
 // ============================================================================
 
 const testing = std.testing;
-const BabyBear = @import("../core/field_presets.zig").BabyBear;
 
 test "benchmarks: small proof verification" {
     const allocator = testing.allocator;

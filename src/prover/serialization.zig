@@ -1,6 +1,8 @@
 const std = @import("std");
 const field = @import("../core/field.zig");
 const proof_mod = @import("proof.zig");
+const merkle_tree = @import("../commitments/merkle_tree.zig");
+const polynomial_commit = @import("../commitments/polynomial_commit.zig");
 
 /// Proof Serialization for zigz zkVM
 ///
@@ -46,7 +48,6 @@ const proof_mod = @import("proof.zig");
 ///   - Value: F
 ///   - Opening proof data
 /// ```
-
 const MAGIC_NUMBER: [4]u8 = "ZIGZ".*;
 const CURRENT_VERSION: u32 = 1;
 
@@ -114,9 +115,8 @@ pub fn BinarySerializer(comptime F: type) type {
 
             proof.metadata = metadata;
 
-            // Read public IO
+            // Read public IO (proof.deinit() cleans up public_io on errdefer)
             proof.public_io = try readPublicIO(allocator, &reader);
-            errdefer proof.public_io.deinit(allocator);
 
             // Read constraint proof
             try readConstraintProof(&reader, &proof.constraint_proof);
@@ -125,7 +125,7 @@ pub fn BinarySerializer(comptime F: type) type {
             try readLassoProofs(allocator, &reader, &proof.lookup_proofs);
 
             // Read witness commitments
-            try readWitnessCommitments(&reader, proof.witness_commitments);
+            try readWitnessCommitments(allocator, &reader, proof.witness_commitments);
 
             return proof;
         }
@@ -314,6 +314,7 @@ pub fn BinarySerializer(comptime F: type) type {
             for (proofs) |lasso| {
                 try writer.writeInt(u32, lasso.table_id, .little);
                 try writer.writeInt(u64, @intCast(lasso.num_lookups), .little);
+                try writer.writeInt(u32, @intCast(lasso.multiset_proof.num_vars), .little);
 
                 // Write multiset proof
                 try writeConstraintProof(writer, lasso.multiset_proof);
@@ -330,13 +331,14 @@ pub fn BinarySerializer(comptime F: type) type {
             for (0..num_proofs) |_| {
                 const table_id = try reader.readInt(u32, .little);
                 const num_lookups = try reader.readInt(u64, .little);
+                const num_vars = try reader.readInt(u32, .little);
 
-                // Create Lasso proof
+                // Create Lasso proof with correct num_vars
                 var lasso = try proof_mod.LassoProof(F).init(
                     allocator,
                     table_id,
                     @intCast(num_lookups),
-                    4, // Default num_vars
+                    @intCast(num_vars),
                 );
                 errdefer lasso.deinit();
 
@@ -357,12 +359,12 @@ pub fn BinarySerializer(comptime F: type) type {
 
                 try writer.writeInt(u64, commitment.value.value, .little);
 
-                // Write opening proof (placeholder)
-                // TODO: Serialize actual Merkle authentication paths
+                // Write opening proof
+                try writeMerkleProof(writer, commitment.proof);
             }
         }
 
-        fn readWitnessCommitments(reader: anytype, commitments: []proof_mod.CommitmentOpening(F)) !void {
+        fn readWitnessCommitments(allocator: std.mem.Allocator, reader: anytype, commitments: []proof_mod.CommitmentOpening(F)) !void {
             for (commitments) |*commitment| {
                 _ = try reader.readAll(&commitment.commitment);
 
@@ -374,9 +376,82 @@ pub fn BinarySerializer(comptime F: type) type {
                 const eval_value = try reader.readInt(u64, .little);
                 commitment.value = F.init(eval_value);
 
-                // Read opening proof (placeholder)
-                // TODO: Deserialize actual Merkle authentication paths
+                // Read opening proof (free old empty proof first)
+                commitment.proof.deinit(allocator);
+                commitment.proof = try readMerkleProof(allocator, reader, commitment.point);
             }
+        }
+
+        fn writeMerkleProof(writer: anytype, proof: polynomial_commit.OpeningProof(F)) !void {
+            // Write OpeningProof.value (polynomial evaluation at point)
+            try writer.writeInt(u64, proof.value.value, .little);
+
+            // Write merkle_proof.index
+            try writer.writeInt(u64, @intCast(proof.merkle_proof.index), .little);
+
+            // Write merkle_proof.value (Merkle leaf value)
+            try writer.writeInt(u64, proof.merkle_proof.value.value, .little);
+
+            // Write path length
+            try writer.writeInt(u32, @intCast(proof.merkle_proof.path.siblings.len), .little);
+
+            // Write siblings
+            for (proof.merkle_proof.path.siblings) |sibling| {
+                try writer.writeAll(&sibling);
+            }
+
+            // Write directions (pack into bytes)
+            for (proof.merkle_proof.path.directions) |dir| {
+                try writer.writeInt(u8, if (dir) 1 else 0, .little);
+            }
+        }
+
+        fn readMerkleProof(allocator: std.mem.Allocator, reader: anytype, point: []const F) !polynomial_commit.OpeningProof(F) {
+            // Read OpeningProof.value (polynomial evaluation at point)
+            const proof_value_raw = try reader.readInt(u64, .little);
+            const proof_value = F.init(proof_value_raw);
+
+            // Read merkle_proof.index
+            const index = try reader.readInt(u64, .little);
+
+            // Read merkle_proof.value (Merkle leaf value)
+            const merkle_value_raw = try reader.readInt(u64, .little);
+            const merkle_value = F.init(merkle_value_raw);
+
+            // Read path length
+            const path_len = try reader.readInt(u32, .little);
+
+            // Read siblings
+            const siblings = try allocator.alloc([32]u8, path_len);
+            errdefer allocator.free(siblings);
+            for (siblings) |*sibling| {
+                _ = try reader.readAll(sibling);
+            }
+
+            // Read directions
+            const directions = try allocator.alloc(bool, path_len);
+            errdefer allocator.free(directions);
+            for (directions) |*dir| {
+                const byte = try reader.readInt(u8, .little);
+                dir.* = byte != 0;
+            }
+
+            // Copy point
+            const point_copy = try allocator.dupe(F, point);
+
+            return polynomial_commit.OpeningProof(F){
+                .point = point_copy,
+                .value = proof_value,
+                .merkle_proof = merkle_tree.OpeningProof(F){
+                    .index = @intCast(index),
+                    .value = merkle_value,
+                    .path = merkle_tree.MerklePath{
+                        .siblings = siblings,
+                        .directions = directions,
+                        .allocator = allocator,
+                    },
+                },
+            };
         }
     };
 }

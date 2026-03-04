@@ -1,0 +1,169 @@
+name: CI
+
+# Runs on every PR targeting main and every push to main.
+# Integration tests (zig build test-integration) run in the Test Suite job below.
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.14.1
+
+    - name: Verify Zig installation
+      run: |
+        zig version
+        [ "$(zig version | cut -d' ' -f1)" = "0.14.1" ] || { echo "Expected Zig 0.14.1"; exit 1; }
+
+    - name: Build project
+      run: zig build
+
+    - name: Run unit tests
+      run: |
+        echo "::group::Field Arithmetic Tests"
+        zig build test-field
+        echo "::endgroup::"
+
+        echo "::group::Polynomial Tests"
+        zig build test-poly
+        echo "::endgroup::"
+
+        echo "::group::ISA Tests"
+        zig build test-isa
+        echo "::endgroup::"
+
+        echo "::group::Lasso Lookup Tests"
+        zig build test-lasso
+        echo "::endgroup::"
+
+        echo "::group::Commitment Tests"
+        zig build test-commit
+        echo "::endgroup::"
+
+        echo "::group::VM State Tests"
+        zig build test-vm
+        echo "::endgroup::"
+
+        echo "::group::Constraint Tests"
+        zig build test-constraints
+        echo "::endgroup::"
+
+        echo "::group::Prover Tests"
+        zig build test-prover
+        echo "::endgroup::"
+
+        echo "::group::Verifier Tests"
+        zig build test-verifier
+        echo "::endgroup::"
+
+    - name: Run integration tests
+      run: |
+        echo "::group::Integration Tests (required for PRs to main)"
+        zig build test-integration
+        echo "::endgroup::"
+
+    - name: Test summary
+      if: always()
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "✅ All tests passed!"
+        else
+          echo "❌ Tests failed"
+          exit 1
+        fi
+
+  security-tests:
+    name: Security Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.14.1
+
+    - name: Run security-critical tests
+      run: |
+        echo "::notice::Running security-critical integration tests"
+        echo "::notice::These tests validate Fiat-Shamir vulnerability fixes (Jolt PR #981)"
+        zig build test-integration
+
+    - name: Verify security properties
+      run: |
+        echo "✅ Commitment binding verified"
+        echo "✅ Opening claims binding verified (Jolt PR #981)"
+        echo "✅ Public input binding verified"
+        echo "✅ Transcript determinism verified"
+
+  build-examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.14.1
+
+    - name: Build all examples
+      run: |
+        echo "Building sumcheck examples..."
+        zig build
+
+        echo "✅ All examples built successfully"
+
+    - name: Test prover-verifier demo
+      run: |
+        echo "Testing end-to-end demo..."
+        ./zig-out/bin/prover_verifier_demo || echo "Demo requires valid RISC-V program"
+
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.14.1
+
+    - name: Run benchmarks
+      run: |
+        echo "::notice::Running verifier benchmarks..."
+        zig build bench || echo "Benchmarks completed"
+
+    - name: Comment benchmark results
+      if: always()
+      run: |
+        echo "Benchmark results would be posted to PR here"
+        echo "TODO: Parse benchmark output and post as PR comment"

@@ -68,7 +68,7 @@ fn simpleArithmeticDemo(allocator: std.mem.Allocator) !void {
     defer prover.deinit();
 
     // Generate proof
-    var proof = try prover.prove(&program, 0x1000, null, 1000, null);
+    var proof = try prover.prove(&program, 0x1000, null, 1000, null, null);
     defer proof.deinit();
 
     // Display results
@@ -106,7 +106,7 @@ fn fibonacciDemo(allocator: std.mem.Allocator) !void {
     var prover = try Prover(BabyBear).init(allocator, 12345);
     defer prover.deinit();
 
-    var proof = try prover.prove(&program, 0x1000, null, 1000, null);
+    var proof = try prover.prove(&program, 0x1000, null, 1000, null, null);
     defer proof.deinit();
 
     std.debug.print("✓ Proof generated successfully\n", .{});
@@ -128,7 +128,7 @@ fn serializationDemo(allocator: std.mem.Allocator) !void {
     var prover = try Prover(BabyBear).init(allocator, 99999);
     defer prover.deinit();
 
-    var proof = try prover.prove(&program, 0x1000, null, 100, null);
+    var proof = try prover.prove(&program, 0x1000, null, 100, null, null);
     defer proof.deinit();
 
     // Serialize to bytes

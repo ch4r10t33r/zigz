@@ -61,7 +61,7 @@ pub fn BenchmarkSuite(comptime F: type) type {
             defer prover.deinit();
 
             const max_steps = 1 << 20;
-            var proof = try prover.prove(program, 0x1000, null, max_steps, null);
+            var proof = try prover.prove(program, 0x1000, null, max_steps, null, null);
             defer proof.deinit();
 
             // Measure proof size

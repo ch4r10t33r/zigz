@@ -22,7 +22,7 @@ pub fn main() !void {
     };
 
     // Execute the program
-    var vm = try VMState.init(allocator, &program, 0x1000);
+    var vm = try VMState.init(allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.step();

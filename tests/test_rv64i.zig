@@ -20,7 +20,7 @@ test "rv64i: LD/SD (Load/Store Doubleword)" {
         0x83, 0x35, 0x00, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -48,7 +48,7 @@ test "rv64i: LW vs LWU (sign extension vs zero extension)" {
         0x03, 0x66, 0x00, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -73,7 +73,7 @@ test "rv64i: ADDIW (Add Immediate Word)" {
         0x9B, 0x05, 0x15, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -100,7 +100,7 @@ test "rv64i: ADDW (Add Word)" {
         0xBB, 0x05, 0xC5, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -125,7 +125,7 @@ test "rv64i: SUBW (Subtract Word)" {
         0xBB, 0x05, 0xC5, 0x40,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -152,7 +152,7 @@ test "rv64i: SLLW (Shift Left Logical Word)" {
         0xBB, 0x15, 0xC5, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -177,7 +177,7 @@ test "rv64i: SRLW (Shift Right Logical Word)" {
         0xBB, 0x55, 0xC5, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -202,7 +202,7 @@ test "rv64i: SRAW (Shift Right Arithmetic Word)" {
         0xBB, 0x55, 0xC5, 0x40,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);
@@ -229,7 +229,7 @@ test "rv64i: 64-bit address space" {
         0x03, 0x36, 0x00, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -256,7 +256,7 @@ test "rv64i: word operations ignore high 32 bits" {
         0x3B, 0x06, 0xB5, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     // 4 steps: 3 instructions + 1 fetch that hits unmapped memory and halts
@@ -278,7 +278,7 @@ test "rv64i: sign extension in word operations" {
         0x9B, 0x05, 0x05, 0x00,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     // 3 steps: 2 instructions + 1 fetch that hits unmapped memory and halts

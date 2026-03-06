@@ -87,12 +87,24 @@ pub fn build(b: *std.Build) void {
         .cpu_features_add = std.Target.riscv.featureSet(&.{.m}),
         .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zifencei }),
     });
+
+    // zigz_io module — importable by freestanding RISC-V guest programs.
+    // Provides commit() and read() via ECALL, no inline asm in guest code.
+    const zigz_io_mod = b.createModule(.{
+        .root_source_file = b.path("src/io.zig"),
+        .target = riscv_target,
+        .optimize = .ReleaseSmall,
+    });
+
     const fibonacci_guest = b.addExecutable(.{
         .name = "fibonacci_guest",
         .root_module = b.createModule(.{
             .root_source_file = b.path("examples/fibonacci_guest/src/main.zig"),
             .target = riscv_target,
             .optimize = .ReleaseSmall,
+            .imports = &.{
+                .{ .name = "zigz_io", .module = zigz_io_mod },
+            },
         }),
     });
     b.installArtifact(fibonacci_guest);

@@ -58,7 +58,7 @@ pub fn main() !void {
     const start_time = std.time.milliTimestamp();
 
     const max_steps = 1 << 20;
-    var proof = try prover.prove(&program, entry_pc, null, max_steps, null);
+    var proof = try prover.prove(&program, entry_pc, null, max_steps, null, null);
     defer proof.deinit();
 
     const prove_time_ms = std.time.milliTimestamp() - start_time;

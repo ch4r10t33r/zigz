@@ -387,7 +387,7 @@ test "witness: generate from simple trace" {
         0x13, 0x05, 0xA0, 0x02, // ADDI x10, x0, 42
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.step();
@@ -417,7 +417,7 @@ test "witness: multiple steps with padding" {
         0x33, 0x06, 0xB5, 0x00, // ADD x12, x10, x11
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(3);
@@ -443,7 +443,7 @@ test "witness: memory access encoding" {
         0x83, 0x25, 0x00, 0x00, // LW x11, 0(x0)
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(3);

@@ -41,9 +41,13 @@ pub fn main() !void {
     const expected_fib_n: u64 = 55; // fib(10)
     const expected_fib_n1: u64 = 89; // fib(11)
 
+    // Input tape: the guest reads n via io.read(u64).
+    const input = [_]u64{n};
+
     std.debug.print("\n=== zigz: Fibonacci zkVM Demo (n={d}) ===\n\n", .{n});
     std.debug.print("Guest ELF : {s} ({d} bytes)\n", .{ guest_path, guest_elf.len });
-    std.debug.print("Expected  : a0 = fib({d}) = {d},  a1 = fib({d}) = {d}\n\n", .{
+    std.debug.print("Input     : n = {d} (via io.read)\n", .{n});
+    std.debug.print("Expected  : outputs[0] = fib({d}) = {d},  outputs[1] = fib({d}) = {d}\n\n", .{
         n, expected_fib_n, n + 1, expected_fib_n1,
     });
 
@@ -74,6 +78,7 @@ pub fn main() !void {
         null,
         1 << 20,
         load_result.segments,
+        &input,
     );
     defer proof.deinit();
     const prove_ms = std.time.milliTimestamp() - t0;
@@ -84,21 +89,21 @@ pub fn main() !void {
     std.debug.print("  Time     : {d} ms\n\n", .{prove_ms});
 
     // -------------------------------------------------------------------------
-    // Check public outputs: the guest placed fib(n) in a0 (x10) and
-    // fib(n+1) in a1 (x11) via inline asm just before EBREAK.
+    // Check public outputs: the guest called io.commit(a) and io.commit(b)
+    // which appended to proof.public_io.outputs in call order.
     // -------------------------------------------------------------------------
-    if (proof.public_io.final_regs) |regs| {
-        const got_a0 = regs[10]; // a0 (x10) = fib(n)
-        const got_a1 = regs[11]; // a1 (x11) = fib(n+1)
+    const outputs = proof.public_io.outputs orelse {
+        std.debug.print("ERROR: guest committed no outputs\n", .{});
+        return error.NoOutputs;
+    };
 
-        std.debug.print("Outputs (guest registers at halt):\n", .{});
-        std.debug.print("  a0 (fib {d}) = {d}  (expected {d})\n", .{ n, got_a0, expected_fib_n });
-        std.debug.print("  a1 (fib {d}) = {d}  (expected {d})\n\n", .{ n + 1, got_a1, expected_fib_n1 });
+    std.debug.print("Outputs (via io.commit):\n", .{});
+    std.debug.print("  outputs[0] = fib({d}) = {d}  (expected {d})\n", .{ n, outputs[0], expected_fib_n });
+    std.debug.print("  outputs[1] = fib({d}) = {d}  (expected {d})\n\n", .{ n + 1, outputs[1], expected_fib_n1 });
 
-        if (got_a0 != expected_fib_n or got_a1 != expected_fib_n1) {
-            std.debug.print("ERROR: unexpected output — computation is wrong!\n", .{});
-            return error.WrongOutput;
-        }
+    if (outputs[0] != expected_fib_n or outputs[1] != expected_fib_n1) {
+        std.debug.print("ERROR: unexpected output — computation is wrong!\n", .{});
+        return error.WrongOutput;
     }
 
     // -------------------------------------------------------------------------

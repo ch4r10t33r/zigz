@@ -2,8 +2,8 @@ const std = @import("std");
 const zigz = @import("zigz");
 
 const BabyBear = zigz.field_presets.BabyBear;
-const Prover = @import("../src/prover/prover.zig").Prover;
-const BinarySerializer = @import("../src/prover/serialization.zig").BinarySerializer;
+const Prover = zigz.Prover;
+const BinarySerializer = zigz.serialization.BinarySerializer;
 
 /// Full Prover Demo
 ///
@@ -13,7 +13,6 @@ const BinarySerializer = @import("../src/prover/serialization.zig").BinarySerial
 /// 3. Generate a proof of execution
 /// 4. Serialize the proof
 /// 5. Verify proof structure
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -101,7 +100,6 @@ fn fibonacciDemo(allocator: std.mem.Allocator) !void {
 
         // Loop body would go here
         // (simplified for demo - actual loop requires branches)
-
         0x00, 0x00, 0x00, 0x00, // Halt
     };
 

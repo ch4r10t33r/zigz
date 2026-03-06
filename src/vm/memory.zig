@@ -7,7 +7,6 @@ const std = @import("std");
 ///
 /// Memory is byte-addressable, but we optimize by storing aligned words
 /// when possible. Supports load/store of bytes, halfwords, words, and doublewords.
-
 pub const Memory = struct {
     /// Sparse storage: only non-zero locations are stored
     /// Maps address → byte value
@@ -163,9 +162,9 @@ pub const Memory = struct {
 
 /// Load/Store sizes
 pub const LoadSize = enum {
-    Byte,      // 8 bits
-    Halfword,  // 16 bits
-    Word,      // 32 bits
+    Byte, // 8 bits
+    Halfword, // 16 bits
+    Word, // 32 bits
     Doubleword, // 64 bits (RV64I)
 };
 

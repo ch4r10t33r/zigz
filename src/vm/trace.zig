@@ -13,7 +13,6 @@ const instruction_table = @import("../isa/instruction_table.zig");
 ///
 /// This trace is used to generate the zkSNARK proof that execution
 /// was correct according to the RISC-V ISA semantics.
-
 pub const ExecutionTrace = struct {
     /// Sequence of execution steps
     steps: std.ArrayList(Step),
@@ -25,18 +24,18 @@ pub const ExecutionTrace = struct {
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
-            .steps = std.ArrayList(Step).init(allocator),
+            .steps = std.ArrayList(Step){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.steps.deinit();
+        self.steps.deinit(self.allocator);
     }
 
     /// Add a step to the trace
     pub fn addStep(self: *Self, step: Step) !void {
-        try self.steps.append(step);
+        try self.steps.append(self.allocator, step);
     }
 
     /// Get total number of steps executed
@@ -133,11 +132,11 @@ pub fn extractLookups(
     trace: ExecutionTrace,
     allocator: std.mem.Allocator,
 ) !std.ArrayList(LookupOp) {
-    var lookups = std.ArrayList(LookupOp).init(allocator);
+    var lookups = std.ArrayList(LookupOp){};
 
     for (trace.steps.items) |step| {
         if (step.lookup_table) |table| {
-            try lookups.append(LookupOp{
+            try lookups.append(allocator, LookupOp{
                 .table = table,
                 .step_num = step.step_num,
                 .pc = step.pc,
@@ -272,7 +271,7 @@ test "trace: lookup extraction" {
     try trace.addStep(step);
 
     var lookups = try extractLookups(trace, testing.allocator);
-    defer lookups.deinit();
+    defer lookups.deinit(testing.allocator);
 
     try testing.expectEqual(@as(usize, 1), lookups.items.len);
     try testing.expectEqualStrings("ADD", lookups.items[0].table.name);

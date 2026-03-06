@@ -356,7 +356,7 @@ pub fn Prover(comptime F: type) type {
 
                 _ = witness; // Witness would be used to extract lookup values
 
-                try proof.lookup_proofs.append(lasso_proof);
+                try proof.lookup_proofs.append(self.allocator, lasso_proof);
             }
         }
 

@@ -17,7 +17,6 @@ const table_builder = @import("table_builder.zig");
 ///   b = b_lo || b_hi
 ///   c = (a_lo + b_lo) + carry, (a_hi + b_hi + carry)
 /// Now we have smaller 16-bit subtables and carry propagation logic.
-
 pub const DecompositionStrategy = enum {
     Chunk16,
     Chunk8,

@@ -16,7 +16,6 @@ const Step = @import("../vm/trace.zig").Step;
 /// - Instruction polynomials: encode instruction data (opcode, funct3, funct7, etc.)
 ///
 /// These polynomials are then used by the constraint system to prove correct execution.
-
 pub const WitnessGenerator = struct {
     allocator: std.mem.Allocator,
 

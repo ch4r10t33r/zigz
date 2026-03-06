@@ -26,7 +26,6 @@ const instruction_table = @import("../isa/instruction_table.zig");
 /// 4. Record state transition in trace
 /// 5. Update PC (pc + 4 or branch target)
 /// 6. Repeat
-
 pub const VMState = struct {
     /// Program counter
     pc: u64,

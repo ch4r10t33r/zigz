@@ -13,7 +13,6 @@ const rv64i = @import("rv64i.zig");
 ///
 /// Large tables (32-bit × 32-bit) are decomposed into smaller subtables
 /// using Lasso's digit-wise decomposition.
-
 /// Lookup table structure for an instruction
 ///
 /// Defines the shape and size of the lookup table needed
@@ -45,18 +44,18 @@ pub const LookupTable = struct {
     /// Compute the total table size
     pub fn computeSize(input_widths: []const usize) usize {
         var total_bits: usize = 0;
-        
+
         // First, sum up all the bit widths
         for (input_widths) |width| {
             total_bits += width;
         }
-        
+
         // If total bits >= 64, the table size would overflow usize
         // Return max usize to indicate infeasibility
         if (total_bits >= 64) {
             return std.math.maxInt(usize);
         }
-        
+
         // Now compute 2^total_bits
         const shift_amount: u6 = @intCast(total_bits);
         return @as(usize, 1) << shift_amount;

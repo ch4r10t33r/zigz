@@ -19,7 +19,6 @@ const std = @import("std");
 /// - x12-x17 (a2-a7): Function arguments
 /// - x18-x27 (s2-s11): Saved registers
 /// - x28-x31 (t3-t6): Temporaries
-
 pub const RegisterFile = struct {
     /// 32 general-purpose registers (x0-x31)
     /// x0 is handled specially and always reads as 0

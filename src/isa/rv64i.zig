@@ -11,7 +11,6 @@ const std = @import("std");
 ///
 /// Reference: RISC-V Instruction Set Manual, Volume I: User-Level ISA
 /// https://riscv.org/technical/specifications/
-
 /// RISC-V instruction formats
 ///
 /// RV64I uses the same 6 instruction formats as RV32I:
@@ -34,29 +33,29 @@ pub const InstructionFormat = enum {
 ///
 /// Note: RV64I adds OP_IMM_32 and OP_32 opcodes for word operations
 pub const Opcode = enum(u7) {
-    LOAD = 0b0000011,      // LB, LH, LW, LD, LBU, LHU, LWU
-    LOAD_FP = 0b0000111,   // FLW, FLD (floating-point, not implemented)
-    MISC_MEM = 0b0001111,  // FENCE, FENCE.I
-    OP_IMM = 0b0010011,    // ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
-    AUIPC = 0b0010111,     // AUIPC
+    LOAD = 0b0000011, // LB, LH, LW, LD, LBU, LHU, LWU
+    LOAD_FP = 0b0000111, // FLW, FLD (floating-point, not implemented)
+    MISC_MEM = 0b0001111, // FENCE, FENCE.I
+    OP_IMM = 0b0010011, // ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
+    AUIPC = 0b0010111, // AUIPC
     OP_IMM_32 = 0b0011011, // RV64I: ADDIW, SLLIW, SRLIW, SRAIW
-    STORE = 0b0100011,     // SB, SH, SW, SD
-    STORE_FP = 0b0100111,  // FSW, FSD (floating-point, not implemented)
-    AMO = 0b0101111,       // Atomic operations (not implemented)
-    OP = 0b0110011,        // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
-    LUI = 0b0110111,       // LUI
-    OP_32 = 0b0111011,     // RV64I: ADDW, SUBW, SLLW, SRLW, SRAW
-    MADD = 0b1000011,      // Floating-point multiply-add (not implemented)
-    MSUB = 0b1000111,      // Floating-point multiply-sub (not implemented)
-    NMSUB = 0b1001011,     // Floating-point negate multiply-sub (not implemented)
-    NMADD = 0b1001111,     // Floating-point negate multiply-add (not implemented)
-    OP_FP = 0b1010011,     // Floating-point operations (not implemented)
-    BRANCH = 0b1100011,    // BEQ, BNE, BLT, BGE, BLTU, BGEU
-    JALR = 0b1100111,      // JALR
-    JAL = 0b1101111,       // JAL
-    SYSTEM = 0b1110011,    // ECALL, EBREAK, CSR*
+    STORE = 0b0100011, // SB, SH, SW, SD
+    STORE_FP = 0b0100111, // FSW, FSD (floating-point, not implemented)
+    AMO = 0b0101111, // Atomic operations (not implemented)
+    OP = 0b0110011, // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
+    LUI = 0b0110111, // LUI
+    OP_32 = 0b0111011, // RV64I: ADDW, SUBW, SLLW, SRLW, SRAW
+    MADD = 0b1000011, // Floating-point multiply-add (not implemented)
+    MSUB = 0b1000111, // Floating-point multiply-sub (not implemented)
+    NMSUB = 0b1001011, // Floating-point negate multiply-sub (not implemented)
+    NMADD = 0b1001111, // Floating-point negate multiply-add (not implemented)
+    OP_FP = 0b1010011, // Floating-point operations (not implemented)
+    BRANCH = 0b1100011, // BEQ, BNE, BLT, BGE, BLTU, BGEU
+    JALR = 0b1100111, // JALR
+    JAL = 0b1101111, // JAL
+    SYSTEM = 0b1110011, // ECALL, EBREAK, CSR*
 
-    _,                     // Catch-all for unknown opcodes
+    _, // Catch-all for unknown opcodes
 
     /// Get the instruction format for this opcode
     pub fn instructionFormat(self: Opcode) InstructionFormat {
@@ -81,28 +80,28 @@ pub const Opcode = enum(u7) {
 /// so we only enumerate the OP/OP_IMM set here. Use funct3_* constants for others.
 pub const Funct3 = enum(u3) {
     ADD_SUB = 0b000, // ADDI/ADD/SUB (OP_IMM/OP)
-    SLL = 0b001,     // SLLI/SLL
-    SLT = 0b010,     // SLTI/SLT
-    SLTU = 0b011,    // SLTIU/SLTU
-    XOR = 0b100,     // XORI/XOR
+    SLL = 0b001, // SLLI/SLL
+    SLT = 0b010, // SLTI/SLT
+    SLTU = 0b011, // SLTIU/SLTU
+    XOR = 0b100, // XORI/XOR
     SRL_SRA = 0b101, // SRLI/SRAI/SRL/SRA
-    OR = 0b110,      // ORI/OR
-    AND = 0b111,     // ANDI/AND
+    OR = 0b110, // ORI/OR
+    AND = 0b111, // ANDI/AND
     _,
 };
 
 /// Funct3 values for LOAD/STORE (same bits, different opcode context)
-pub const funct3_ld: u3 = 0b011;  // Load Doubleword (RV64I)
+pub const funct3_ld: u3 = 0b011; // Load Doubleword (RV64I)
 pub const funct3_lwu: u3 = 0b110; // Load Word Unsigned (RV64I)
-pub const funct3_sd: u3 = 0b011;  // Store Doubleword (RV64I)
-pub const funct3_lw: u3 = 0b010;  // Load Word (sign-extended in RV64I)
+pub const funct3_sd: u3 = 0b011; // Store Doubleword (RV64I)
+pub const funct3_lw: u3 = 0b010; // Load Word (sign-extended in RV64I)
 
 /// Funct7 field (bits [31:25])
 ///
 /// Provides additional encoding space for R-type instructions
 pub const Funct7 = enum(u7) {
     NORMAL = 0b0000000, // Normal operations (ADD, SLL, SRL, etc.)
-    ALT = 0b0100000,    // Alternative operations (SUB, SRA)
+    ALT = 0b0100000, // Alternative operations (SUB, SRA)
     _,
 };
 
@@ -111,12 +110,12 @@ pub const Funct7 = enum(u7) {
 /// All fields are present; irrelevant fields for a given format are zero
 pub const Instruction = struct {
     opcode: Opcode,
-    rd: u5,     // Destination register
+    rd: u5, // Destination register
     funct3: u3, // Function modifier
-    rs1: u5,    // Source register 1
-    rs2: u5,    // Source register 2
+    rs1: u5, // Source register 1
+    rs2: u5, // Source register 2
     funct7: u7, // Function modifier (R-type)
-    imm: i64,   // Immediate value (64-bit for RV64I)
+    imm: i64, // Immediate value (64-bit for RV64I)
 
     /// Decode a 32-bit instruction word
     ///

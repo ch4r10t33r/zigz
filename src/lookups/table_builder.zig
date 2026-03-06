@@ -10,7 +10,6 @@ const instruction_table = @import("../isa/instruction_table.zig");
 /// For example, an ADD table would map (a, b) -> a + b for all valid inputs.
 /// Since full tables can be massive (2^64 entries for 32-bit ADD), we use
 /// decomposition strategies to make them tractable.
-
 /// Table entry representing a single (input, output) pair
 pub fn TableEntry(comptime F: type) type {
     return struct {

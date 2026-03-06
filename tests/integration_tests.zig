@@ -384,8 +384,8 @@ test "integration: proof size scales logarithmically" {
     std.debug.print("\n=== Test: Proof Size Scaling ===\n", .{});
 
     const test_sizes = [_]usize{ 4, 8, 16, 32, 64 };
-    var proof_sizes = std.ArrayList(usize).init(allocator);
-    defer proof_sizes.deinit();
+    var proof_sizes = std.ArrayList(usize){};
+    defer proof_sizes.deinit(allocator);
 
     for (test_sizes) |size| {
         const program = try createNOPProgram(allocator, size);
@@ -398,7 +398,7 @@ test "integration: proof size scales logarithmically" {
         defer proof.deinit();
 
         const proof_size = proof.estimateSize();
-        try proof_sizes.append(proof_size);
+        try proof_sizes.append(allocator, proof_size);
 
         std.debug.print("{d:4} steps → {d:6} bytes ({d} vars)\n", .{
             size,

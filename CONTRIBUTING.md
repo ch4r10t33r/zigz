@@ -20,32 +20,34 @@ Be respectful, constructive, and professional in all interactions.
 
 ### Prerequisites
 
-- **Zig 0.14.1** (required; the project does not support Zig 0.15.x)
+- **Zig 0.15.2** (required)
 - Git (for dependency management)
 - Basic understanding of zero-knowledge proofs (recommended)
 
-### Zig version (0.14.1 only)
+### Zig version (0.15.2)
 
-All builds and tests must use **Zig 0.14.1**. The repo root contains `.zig-version` with `0.14.1` so tools like zigup use the correct version when you `cd` into the project.
+All builds and tests must use **Zig 0.15.2**. The repo root's `build.zig.zon` declares `minimum_zig_version = "0.15.2"`.
 
-- **If you see errors** like `no field named 'root_source_file'` or `no field or member function named 'addStaticLibrary'`, you are running Zig 0.15.x. Switch to 0.14.1.
-- **To use 0.14.1 with zigup:**
-  ```bash
-  # If you have Homebrew's standalone zig installed, uninstall it first
-  brew uninstall zig
-  
-  # Fetch and switch to 0.14.1
-  zigup fetch 0.14.1
-  zigup 0.14.1 --path-link /opt/homebrew/bin/zig
-  
-  # Verify
-  zig version  # Should show 0.14.1
-  ```
-- **To switch between versions:**
-  ```bash
-  zigup 0.14.1 --path-link /opt/homebrew/bin/zig  # For this project
-  zigup 0.15.2 --path-link /opt/homebrew/bin/zig  # For other projects
-  ```
+We recommend [anyzig](https://github.com/marler8997/anyzig) to manage Zig versions. It reads `minimum_zig_version` from `build.zig.zon` and automatically downloads and uses the correct version — no manual switching needed.
+
+**Install anyzig (macOS/Linux):**
+```bash
+# macOS aarch64 (Apple Silicon)
+curl -L https://github.com/marler8997/anyzig/releases/latest/download/anyzig-aarch64-macos.tar.gz | tar xz -C ~/.local/bin
+
+# macOS x86_64
+curl -L https://github.com/marler8997/anyzig/releases/latest/download/anyzig-x86_64-macos.tar.gz | tar xz -C ~/.local/bin
+
+# Linux x86_64
+curl -L https://github.com/marler8997/anyzig/releases/latest/download/anyzig-x86_64-linux.tar.gz | tar xz -C ~/.local/bin
+```
+
+Make sure `~/.local/bin` is on your PATH (add to `~/.zshrc` or `~/.bashrc`):
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Once installed, `zig version` inside the repo automatically returns `0.15.2`.
 
 ### Building
 

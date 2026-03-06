@@ -345,7 +345,7 @@ pub fn BinarySerializer(comptime F: type) type {
                 // Read multiset proof
                 try readConstraintProof(reader, &lasso.multiset_proof);
 
-                try proofs.append(lasso);
+                try proofs.append(allocator, lasso);
             }
         }
 

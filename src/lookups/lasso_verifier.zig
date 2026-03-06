@@ -19,7 +19,6 @@ const table_builder = @import("table_builder.zig");
 /// **Key Property:**
 /// Verifier runs in O(v) time where v = log(table_size),
 /// instead of O(table_size) for naive verification.
-
 pub const VerificationResult = struct {
     is_valid: bool,
     reason: []const u8,
@@ -86,32 +85,21 @@ pub fn LassoVerifier(comptime F: type) type {
             // The claimed sum should be related to the query polynomial
             const claimed_sum = proof.sumcheck_proof.final_eval;
 
-            // Oracle: evaluate table polynomial at final point
-            const oracle = struct {
-                table_polynomial: *Multilinear,
-
-                fn eval(point: []const F) !F {
-                    return @fieldParentPtr(@This(), "table_polynomial", &point).table_polynomial.eval(point);
-                }
-            }{ .table_polynomial = &table_poly };
-
-            const eval_fn = struct {
-                tp: *Multilinear,
-
-                fn call(point: []const F) !F {
-                    return @fieldParentPtr(@This(), "tp", &point).tp.eval(point);
-                }
-            }{ .tp = &table_poly }.call;
-
-            const sumcheck_result = try SumcheckVerifier.verify(
+            // Verify round consistency without oracle (oracle check done separately below).
+            const rounds_result = try SumcheckVerifier.verifyRounds(
                 proof.sumcheck_proof,
                 claimed_sum,
-                &eval_fn,
                 allocator,
             );
 
-            if (!sumcheck_result.is_valid) {
+            if (!rounds_result.is_valid) {
                 return VerificationResult.reject("Sumcheck verification failed");
+            }
+
+            // Oracle check: table polynomial at final point must match final claim.
+            const oracle_eval = try table_poly.eval(proof.sumcheck_proof.final_point);
+            if (!oracle_eval.eql(proof.sumcheck_proof.final_eval)) {
+                return VerificationResult.reject("Oracle check failed");
             }
 
             // Step 5: All checks passed
@@ -256,18 +244,18 @@ test "lasso_verifier: honest proof verifies" {
     defer table.deinit();
 
     // Create queries
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     {
         const inputs = [_]F{ F.init(1), F.init(2) };
         const outputs = [_]F{F.init(3)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     // Generate proof
@@ -288,18 +276,18 @@ test "lasso_verifier: wrong query count rejected" {
     var table = try table_builder.buildXorTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     {
         const inputs = [_]F{ F.init(3), F.init(2) };
         const outputs = [_]F{F.init(1)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     var proof = try Prover.prove(table, queries.items, testing.allocator);
@@ -319,18 +307,18 @@ test "lasso_verifier: verify with queries" {
     var table = try table_builder.buildAndTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     {
         const inputs = [_]F{ F.init(3), F.init(2) };
         const outputs = [_]F{F.init(2)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     var proof = try Prover.prove(table, queries.items, testing.allocator);
@@ -350,18 +338,18 @@ test "lasso_verifier: fast verification" {
     var table = try table_builder.buildAddTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     {
         const inputs = [_]F{ F.init(2), F.init(1) };
         const outputs = [_]F{F.init(3)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     var proof = try Prover.prove(table, queries.items, testing.allocator);
@@ -390,29 +378,29 @@ test "lasso_verifier: multiple queries verify" {
     var table = try table_builder.buildXorTable(F, testing.allocator, 3);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     // Multiple XOR queries
     {
         const inputs = [_]F{ F.init(5), F.init(3) };
         const outputs = [_]F{F.init(6)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
     {
         const inputs = [_]F{ F.init(7), F.init(2) };
         const outputs = [_]F{F.init(5)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
     {
         const inputs = [_]F{ F.init(4), F.init(4) };
         const outputs = [_]F{F.init(0)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     var proof = try Prover.prove(table, queries.items, testing.allocator);

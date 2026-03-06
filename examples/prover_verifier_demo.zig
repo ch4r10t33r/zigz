@@ -12,7 +12,6 @@ const zigz = @import("zigz");
 /// - Proper Fiat-Shamir transcript binding
 /// - Two-phase polynomial commitment protocol
 /// - Domain separation to prevent cross-protocol attacks
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

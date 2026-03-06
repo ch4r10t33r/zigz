@@ -2,7 +2,6 @@
 ///
 /// Demonstrates how sumcheck scales with polynomial size.
 /// Shows the exponential savings: O(v) verifier vs O(2^v) naive checking.
-
 const std = @import("std");
 const zigz = @import("zigz");
 const field_presets = zigz.field_presets;
@@ -15,7 +14,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
 
     try stdout.writeAll("\n" ++ "=" ** 70 ++ "\n");
     try stdout.writeAll("  Sumcheck Protocol - Scalability Demo\n");

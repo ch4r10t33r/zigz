@@ -232,13 +232,9 @@ pub fn Field(comptime T: type, comptime modulus: T) type {
         /// Format for printing
         pub fn format(
             self: Self,
-            comptime fmt: []const u8,
-            options: std.fmt.FormatOptions,
             writer: anytype,
         ) !void {
-            _ = fmt;
-            _ = options;
-            try writer.print("{}", .{self.value});
+            try writer.print("{d}", .{self.value});
         }
     };
 }

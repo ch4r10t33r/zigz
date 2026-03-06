@@ -222,13 +222,13 @@ test "integration: transcript generates deterministic challenges" {
     var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
-    var proof1 = try prover1.prove(program, entry_pc, null, 1 << 20, null);
+    var proof1 = try prover1.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof1.deinit();
 
     var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
-    var proof2 = try prover2.prove(program, entry_pc, null, 1 << 20, null);
+    var proof2 = try prover2.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof2.deinit();
 
     // Transcripts should generate same challenges
@@ -344,13 +344,13 @@ test "integration: public inputs bound to transcript" {
     var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
-    var proof1 = try prover1.prove(program, 0x1000, null, 1 << 20, null);
+    var proof1 = try prover1.prove(program, 0x1000, null, 1 << 20, null, null);
     defer proof1.deinit();
 
     var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
-    var proof2 = try prover2.prove(program, 0x2000, null, 1 << 20, null);
+    var proof2 = try prover2.prove(program, 0x2000, null, 1 << 20, null, null);
     defer proof2.deinit();
 
     // Proofs should be different because initial PC is bound to transcript

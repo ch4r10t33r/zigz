@@ -16,7 +16,6 @@ const hash = @import("../core/hash.zig");
 ///
 /// The verifier never needs to see the full polynomial - only the round
 /// polynomials and a single evaluation oracle call at the end.
-
 pub fn SumcheckVerifier(comptime F: type) type {
     return struct {
         const Self = @This();

@@ -13,7 +13,6 @@ const BabyBear = @import("../core/field_presets.zig").BabyBear;
 /// - Number of lookup tables used
 ///
 /// Expected performance: O(log n) verification time
-
 pub fn BenchmarkSuite(comptime F: type) type {
     return struct {
         const Self = @This();

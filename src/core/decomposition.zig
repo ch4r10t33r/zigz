@@ -6,7 +6,6 @@ const std = @import("std");
 /// we need to decompose larger values into multiple field elements.
 ///
 /// This is essential for zkVMs targeting 64-bit architectures with 31-bit fields.
-
 /// Decompose a 64-bit value into 31-bit chunks for BabyBear field
 ///
 /// A 64-bit value is split into 3 chunks:
@@ -16,9 +15,9 @@ const std = @import("std");
 ///
 /// Reconstruction: value = low + (middle << 31) + (high << 62)
 pub const Decompose64to31 = struct {
-    low: u64,    // bits [0:30]  (31 bits, value < 2^31)
+    low: u64, // bits [0:30]  (31 bits, value < 2^31)
     middle: u64, // bits [31:61] (31 bits, value < 2^31)
-    high: u64,   // bits [62:63] (2 bits,  value < 4)
+    high: u64, // bits [62:63] (2 bits,  value < 4)
 
     const MASK_31 = (1 << 31) - 1; // 0x7FFFFFFF
 

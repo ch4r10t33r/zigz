@@ -21,7 +21,6 @@ const hash = @import("../core/hash.zig");
 /// 2. Commitment = root hash
 /// 3. To prove evaluation at index i: provide value + Merkle path
 /// 4. Verifier checks: hash up from leaf → root
-
 pub const HASH_SIZE = 32;
 pub const Hash = [HASH_SIZE]u8;
 

@@ -23,7 +23,6 @@ const univariate = @import("univariate.zig");
 /// - Reed-Solomon codes
 /// - FRI protocol
 /// - zkVM constraint checking
-
 /// Lagrange interpolation over a finite field
 pub fn LagrangeInterpolation(comptime F: type) type {
     return struct {

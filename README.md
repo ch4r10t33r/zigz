@@ -203,7 +203,7 @@ Cannot run (without soft-float):
 
 ### Prerequisites
 
-- Zig 0.14.1 (for building from source)
+- Zig 0.15.2 (for building from source)
 - Git (for dependency management)
 
 ### Install zigz (one-liner)

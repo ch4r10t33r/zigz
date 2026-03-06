@@ -2,7 +2,6 @@
 ///
 /// This example demonstrates how sumcheck catches a cheating prover.
 /// Shows why soundness is important and how the verifier detects fraud.
-
 const std = @import("std");
 const zigz = @import("zigz");
 const field_presets = zigz.field_presets;
@@ -15,7 +14,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
 
     try stdout.writeAll("\n" ++ "=" ** 70 ++ "\n");
     try stdout.writeAll("  Sumcheck Protocol - Catching Dishonest Provers\n");
@@ -37,8 +36,8 @@ pub fn main() !void {
     const correct_sum = poly.sumOverHypercube();
     const wrong_sum = correct_sum.add(F.init(5)); // Lie about the sum!
 
-    try stdout.print("Actual sum: {}\n", .{correct_sum});
-    try stdout.print("Claimed sum: {} (WRONG!)\n\n", .{wrong_sum});
+    try stdout.print("Actual sum: {f}\n", .{correct_sum});
+    try stdout.print("Claimed sum: {f} (WRONG!)\n\n", .{wrong_sum});
 
     var proof = try Prover.prove(poly, allocator);
     defer proof.deinit();
@@ -72,8 +71,8 @@ pub fn main() !void {
     const original = proof2.round_polynomials[0][0];
     proof2.round_polynomials[0][0] = original.add(F.init(1));
 
-    try stdout.print("Original coefficient: {}\n", .{original});
-    try stdout.print("Tampered coefficient: {} (modified!)\n\n", .{proof2.round_polynomials[0][0]});
+    try stdout.print("Original coefficient: {f}\n", .{original});
+    try stdout.print("Tampered coefficient: {f} (modified!)\n\n", .{proof2.round_polynomials[0][0]});
 
     const oracle_fn2 = struct {
         fn call(point: []const F) !F {

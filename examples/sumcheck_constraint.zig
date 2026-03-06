@@ -4,7 +4,6 @@
 /// Demonstrates proving that a computation was done correctly.
 ///
 /// Example: Prove that for all steps, output = input1 + input2 (addition constraint)
-
 const std = @import("std");
 const field_presets = @import("../src/core/field_presets.zig");
 const multilinear = @import("../src/poly/multilinear.zig");
@@ -16,7 +15,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
 
     try stdout.writeAll("\n" ++ "=" ** 70 ++ "\n");
     try stdout.writeAll("  Sumcheck for Constraint Verification\n");

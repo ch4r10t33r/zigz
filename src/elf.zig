@@ -50,8 +50,8 @@ pub fn load(allocator: std.mem.Allocator, data: []const u8) !LoadResult {
     const data_enc = data[5]; // 1 = LE, 2 = BE
     if (data_enc != 1) return error.UnsupportedData;
 
-    var segments = std.ArrayList(Segment).init(allocator);
-    errdefer segments.deinit();
+    var segments = std.ArrayList(Segment){};
+    errdefer segments.deinit(allocator);
     var entry_pc: u64 = 0;
 
     if (class == 2) {
@@ -75,7 +75,7 @@ pub fn load(allocator: std.mem.Allocator, data: []const u8) !LoadResult {
             _ = readU64Le(data, phoff + 40); // p_memsz (reserved for BSS later)
             if (p_offset > data.len or p_offset + p_filesz > data.len) return error.InvalidPhdr;
             const seg_data = data[p_offset..][0..p_filesz];
-            try segments.append(.{ .vaddr = p_vaddr, .data = seg_data });
+            try segments.append(allocator, .{ .vaddr = p_vaddr, .data = seg_data });
         }
     } else if (class == 1) {
         // ELF32
@@ -98,7 +98,7 @@ pub fn load(allocator: std.mem.Allocator, data: []const u8) !LoadResult {
             _ = readU32Le(data, phoff + 20); // p_memsz (reserved for BSS later)
             if (p_offset > data.len or p_offset + p_filesz > data.len) return error.InvalidPhdr;
             const seg_data = data[p_offset..][0..p_filesz];
-            try segments.append(.{ .vaddr = p_vaddr, .data = seg_data });
+            try segments.append(allocator, .{ .vaddr = p_vaddr, .data = seg_data });
         }
     } else {
         return error.UnsupportedClass;
@@ -107,7 +107,7 @@ pub fn load(allocator: std.mem.Allocator, data: []const u8) !LoadResult {
     if (segments.items.len == 0) return error.NoLoadSegments;
 
     const owned = try allocator.dupe(Segment, segments.items);
-    segments.deinit();
+    segments.deinit(allocator);
     return LoadResult{
         .entry_pc = entry_pc,
         .segments = owned,

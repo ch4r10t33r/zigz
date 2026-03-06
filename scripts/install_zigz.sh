@@ -44,7 +44,7 @@ build_from_source() {
   git clone --depth 1 https://github.com/${REPO}.git "${BUILD_DIR}"
   cd "${BUILD_DIR}"
   if [ -x "./scripts/install_zig.sh" ]; then
-    eval $(./scripts/install_zig.sh 0.14.1)
+    eval $(./scripts/install_zig.sh 0.15.2)
   fi
   zig build -Doptimize=ReleaseSafe
   mkdir -p "$BIN_DIR"

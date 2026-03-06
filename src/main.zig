@@ -35,13 +35,13 @@ pub fn main() !void {
     }
 
     // No subcommand: print banner (backward compatible)
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("zigz — Jolt-style zkVM (sumcheck + Lasso)\n", .{});
     try stdout.print("Usage: zigz <execute|prove|verify|new|build> [args...]\n", .{});
 }
 
 fn printUsage() void {
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     stdout.print(
         \\zigz — Jolt-style zkVM (sumcheck + Lasso)
         \\
@@ -117,7 +117,7 @@ fn cmdExecute(allocator: std.mem.Allocator, args: []const []const u8) !void {
         };
     }
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("execute: {d} steps (entry_pc=0x{x}, max_steps={d})\n", .{ steps, entry_pc, max_steps });
 }
 
@@ -161,7 +161,7 @@ fn cmdProve(allocator: std.mem.Allocator, args: []const []const u8) !void {
         try std.fs.cwd().writeFile(.{ .sub_path = path, .data = proof_bytes });
     }
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("prove: {d} ms, proof size {d} bytes, steps {d}\n", .{
         prove_ms,
         proof_bytes.len,
@@ -196,7 +196,7 @@ fn cmdVerify(allocator: std.mem.Allocator, args: []const []const u8) !void {
     const result = try verifier.verify(proof, program);
     const verify_ms = std.time.milliTimestamp() - start;
 
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("verify: {s} ({d} ms)\n", .{ @tagName(result), verify_ms });
 }
 
@@ -242,7 +242,7 @@ fn cmdNew(_: std.mem.Allocator, args: []const []const u8) !void {
         \\}
     ;
     try dir.writeFile(.{ .sub_path = "src/main.zig", .data = main_zig });
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("Created project \"{s}\".\n", .{name});
     try stdout.print("  cd {s} && zig build && zigz execute zig-out/bin/program\n", .{name});
 }
@@ -276,7 +276,7 @@ fn cmdBuild(allocator: std.mem.Allocator, args: []const []const u8) !void {
         if (result.stderr.len > 0) std.debug.print("{s}", .{result.stderr});
         std.process.exit(result.term.Exited);
     }
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     try stdout.print("Build succeeded. ELF: {s}/zig-out/bin/program\n", .{path});
 }
 

@@ -22,12 +22,12 @@ jobs:
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2
       with:
-        version: 0.14.1
+        version: 0.15.2
 
     - name: Verify Zig installation
       run: |
         zig version
-        [ "$(zig version | cut -d' ' -f1)" = "0.14.1" ] || { echo "Expected Zig 0.14.1"; exit 1; }
+        [ "$(zig version | cut -d' ' -f1)" = "0.15.2" ] || { echo "Expected Zig 0.15.2"; exit 1; }
 
     - name: Build project
       run: zig build
@@ -108,7 +108,7 @@ jobs:
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2
       with:
-        version: 0.14.1
+        version: 0.15.2
 
     - name: Run security-critical tests
       run: |
@@ -136,7 +136,7 @@ jobs:
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2
       with:
-        version: 0.14.1
+        version: 0.15.2
 
     - name: Build all examples
       run: |
@@ -164,7 +164,7 @@ jobs:
     - name: Setup Zig
       uses: goto-bus-stop/setup-zig@v2
       with:
-        version: 0.14.1
+        version: 0.15.2
 
     - name: Run benchmarks
       run: |
@@ -197,9 +197,9 @@ jobs:
     - name: Install Zig and build zigz
       run: |
         chmod +x scripts/install_zig.sh
-        eval $(./scripts/install_zig.sh 0.14.1)
+        eval $(./scripts/install_zig.sh 0.15.2)
         zig version
-        [ "$(zig version | cut -d' ' -f1)" = "0.14.1" ] || { echo "Expected Zig 0.14.1"; exit 1; }
+        [ "$(zig version | cut -d' ' -f1)" = "0.15.2" ] || { echo "Expected Zig 0.15.2"; exit 1; }
         zig build -Doptimize=ReleaseSafe
 
     - name: Set artifact name for install_zigz.sh

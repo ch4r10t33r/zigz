@@ -23,7 +23,6 @@ const hash = @import("../core/hash.zig");
 /// **Key Papers:**
 /// - Lasso: https://people.cs.georgetown.edu/jthaler/Lasso-paper.pdf
 /// - Jolt: https://eprint.iacr.org/2023/1217.pdf
-
 /// Lasso proof for a set of lookup queries
 pub fn LassoProof(comptime F: type) type {
     return struct {
@@ -320,26 +319,26 @@ test "lasso_prover: simple lookup proof" {
     defer table.deinit();
 
     // Create lookup queries
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     // Query 1: 1 + 2 = 3 mod 4 = 3
     {
         const inputs = [_]F{ F.init(1), F.init(2) };
         const outputs = [_]F{F.init(3)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     // Query 2: 2 + 3 = 5 mod 4 = 1
     {
         const inputs = [_]F{ F.init(2), F.init(3) };
         const outputs = [_]F{F.init(1)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     // Generate proof
@@ -358,19 +357,19 @@ test "lasso_prover: proof with mapping" {
     var table = try table_builder.buildXorTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     // Query: 3 XOR 2 = 1
     {
         const inputs = [_]F{ F.init(3), F.init(2) };
         const outputs = [_]F{F.init(1)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     // Compute correct mapping (3 * 4 + 2 = 14)
@@ -390,19 +389,19 @@ test "lasso_prover: invalid mapping detection" {
     var table = try table_builder.buildAddTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     // Query: 1 + 2 = 3 (correct)
     {
         const inputs = [_]F{ F.init(1), F.init(2) };
         const outputs = [_]F{F.init(3)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     // Wrong mapping (pointing to wrong table entry)
@@ -420,29 +419,29 @@ test "lasso_prover: multiple queries" {
     var table = try table_builder.buildAndTable(F, testing.allocator, 2);
     defer table.deinit();
 
-    var queries = std.ArrayList(Query).init(testing.allocator);
+    var queries = std.ArrayList(Query){};
     defer {
         for (queries.items) |q| {
             q.deinit(testing.allocator);
         }
-        queries.deinit();
+        queries.deinit(testing.allocator);
     }
 
     // Multiple AND queries
     {
         const inputs = [_]F{ F.init(3), F.init(2) };
         const outputs = [_]F{F.init(2)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
     {
         const inputs = [_]F{ F.init(1), F.init(1) };
         const outputs = [_]F{F.init(1)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
     {
         const inputs = [_]F{ F.init(2), F.init(3) };
         const outputs = [_]F{F.init(2)};
-        try queries.append(try Query.init(testing.allocator, &inputs, &outputs));
+        try queries.append(testing.allocator, try Query.init(testing.allocator, &inputs, &outputs));
     }
 
     var proof = try Prover.prove(table, queries.items, testing.allocator);

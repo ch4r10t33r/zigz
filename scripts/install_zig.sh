@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
-# Install Zig (default 0.14.1). One-liner: curl -sL https://raw.githubusercontent.com/ch4r10t33r/zigz/main/scripts/install_zig.sh | sh
-# Optional: pass version, e.g. sh install_zig.sh 0.14.1. To get PATH for eval: script prints export line to stdout at end.
+# Install Zig (default 0.15.2). One-liner: curl -sL https://raw.githubusercontent.com/ch4r10t33r/zigz/main/scripts/install_zig.sh | sh
+# Optional: pass version, e.g. sh install_zig.sh 0.15.2. To get PATH for eval: script prints export line to stdout at end.
 set -e
-VERSION="${1:-0.14.1}"
+VERSION="${1:-0.15.2}"
 PREFIX="${ZIG_INSTALL_DIR:-$HOME/.local}"
 BASE="https://ziglang.org/download/${VERSION}"
 case "$(uname -s)" in

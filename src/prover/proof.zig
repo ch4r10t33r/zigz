@@ -14,7 +14,6 @@ const merkle_tree = @import("../commitments/merkle_tree.zig");
 /// 4. Public inputs and outputs
 ///
 /// The proof size is O(log n) where n is the number of execution steps.
-
 /// Public inputs and outputs for the program
 pub const PublicIO = struct {
     /// Program hash (commitment to the bytecode)
@@ -225,12 +224,12 @@ pub fn Proof(comptime F: type) type {
             errdefer constraint_proof.deinit();
 
             // Initialize lookup proofs list
-            var lookup_proofs = std.ArrayList(LassoProof(F)).init(allocator);
+            var lookup_proofs = std.ArrayList(LassoProof(F)){};
             errdefer {
                 for (lookup_proofs.items) |*proof| {
                     proof.deinit();
                 }
-                lookup_proofs.deinit();
+                lookup_proofs.deinit(allocator);
             }
 
             // Initialize witness commitments (43 polynomials)
@@ -263,7 +262,7 @@ pub fn Proof(comptime F: type) type {
             for (self.lookup_proofs.items) |*proof| {
                 proof.deinit();
             }
-            self.lookup_proofs.deinit();
+            self.lookup_proofs.deinit(self.allocator);
 
             for (self.witness_commitments) |*opening| {
                 opening.deinit();

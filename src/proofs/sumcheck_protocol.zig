@@ -18,7 +18,6 @@ const hash = @import("../core/hash.zig");
 /// 3. Final check: H = p(r₁, ..., rᵥ) via oracle
 ///
 /// This implementation uses Fiat-Shamir to make the protocol non-interactive.
-
 /// Sumcheck proof structure
 ///
 /// Contains all the information a prover sends to convince a verifier

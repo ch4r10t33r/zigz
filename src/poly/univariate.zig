@@ -10,7 +10,6 @@ const std = @import("std");
 ///
 /// Operations are generic over the field type, enabling use with
 /// any field from field_presets (Goldilocks, BabyBear, etc.)
-
 /// Univariate polynomial over a finite field
 ///
 /// Generic over field type F, allowing compile-time specialization

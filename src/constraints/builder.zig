@@ -18,7 +18,6 @@ const Witness = @import("witness.zig").Witness;
 /// Lookup Constraints enforce:
 /// - Instruction semantics: (rs1_val, rs2_val) → rd_val via lookup table
 /// - These are handled by Lasso (Phase 5), not arithmetic constraints
-
 pub const ConstraintBuilder = struct {
     allocator: std.mem.Allocator,
 
@@ -30,7 +29,7 @@ pub const ConstraintBuilder = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .constraints = std.ArrayList(Constraint).init(allocator),
+            .constraints = std.ArrayList(Constraint){},
         };
     }
 
@@ -40,12 +39,12 @@ pub const ConstraintBuilder = struct {
             self.allocator.free(@constCast(constraint.name));
             self.allocator.free(@constCast(constraint.description));
         }
-        self.constraints.deinit();
+        self.constraints.deinit(self.allocator);
     }
 
     /// Add a constraint to the system
     pub fn addConstraint(self: *Self, constraint: Constraint) !void {
-        try self.constraints.append(constraint);
+        try self.constraints.append(self.allocator, constraint);
     }
 
     /// Build all constraints for a witness
@@ -226,14 +225,14 @@ pub const ConstraintSystem = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .builder = ConstraintBuilder.init(allocator),
-            .lookup_tables = std.ArrayList(LookupConstraint).init(allocator),
+            .lookup_tables = std.ArrayList(LookupConstraint){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.builder.deinit();
-        self.lookup_tables.deinit();
+        self.lookup_tables.deinit(self.allocator);
     }
 
     /// Build complete constraint system from witness
@@ -262,7 +261,7 @@ pub const ConstraintSystem = struct {
                     .step_num = step.step_num,
                     .pc = step.pc,
                 };
-                try self.lookup_tables.append(lookup);
+                try self.lookup_tables.append(self.allocator, lookup);
             }
         }
     }

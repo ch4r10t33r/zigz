@@ -2,6 +2,10 @@
 
 **A zero-knowledge virtual machine written in Zig, inspired by Jolt's lookup-based proving architecture.**
 
+> ⚠️ **Experimental software.** zigz is under active development and has not been audited.
+> Do **not** use it in production systems. APIs may change without notice.
+> Use at your own risk.
+
 ---
 
 ## Overview
@@ -74,7 +78,7 @@ See [MODULES.md](MODULES.md) for detailed architecture documentation.
 
 ## RISC-V ISA Support
 
-zigz implements a **production-ready subset of the RISC-V ISA**, sufficient for running practical programs in the zkVM.
+zigz implements a **practical subset of the RISC-V ISA**, sufficient for running programs in the zkVM.
 
 ### ✅ Implemented Extensions
 
@@ -324,7 +328,10 @@ The template binary is a full RISC-V Linux executable; for minimal provable prog
 
 **Current Phase**: Phase 9 - Full Verifier ✅ **COMPLETE!**
 
-zigz now has a **complete, production-ready prover-verifier implementation**! You can execute RISC-V programs, generate zero-knowledge proofs, and verify them with O(log n) verification time. The system includes critical security fixes for Fiat-Shamir vulnerabilities and comprehensive integration tests.
+zigz has a complete end-to-end prover-verifier implementation. You can execute RISC-V programs, generate zero-knowledge proofs, and verify them with O(log n) verification time.
+
+> ⚠️ **This is experimental research software.** The proof system has not been audited
+> and should not be relied upon for security-sensitive applications.
 
 **What's Working:**
 - ✅ End-to-end proof generation and verification
@@ -335,7 +342,7 @@ zigz now has a **complete, production-ready prover-verifier implementation**! Yo
 - ✅ Binary proof serialization
 - ✅ Comprehensive test suite (10 integration tests)
 
-**Next Steps**: Performance optimization, additional ISA extensions (optional: RV64A for atomics), and production hardening.
+**Next Steps**: Performance optimization, additional ISA extensions (optional: RV64A for atomics), security audit.
 
 ### Implementation Roadmap
 

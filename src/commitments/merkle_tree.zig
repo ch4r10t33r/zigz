@@ -227,7 +227,7 @@ pub fn MerkleTree(comptime F: type) type {
 
             // Higher levels - compute from tree structure
             // For simplicity, we traverse the tree
-            // (In production, might cache intermediate hashes)
+            // (could cache intermediate hashes for performance)
             _ = level_size;
             // Simplified: return zero hash for now
             // Full implementation would traverse tree to get actual hash

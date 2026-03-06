@@ -13,7 +13,7 @@ const hash_zig = @import("hash-zig");
 /// - **SHA3-256**: Standard cryptographic hash (CPU-efficient, but expensive in-circuit)
 /// - **Poseidon2**: Algebraic hash designed for zkSNARKs/zkSTARKs (circuit-efficient)
 ///
-/// For production zkVM use, prefer Poseidon2 for in-circuit operations and
+/// For zkVM use, prefer Poseidon2 for in-circuit operations and
 /// SHA3 only for external commitments or compatibility.
 /// Hash digest type (32 bytes / 256 bits)
 pub const Digest = [32]u8;

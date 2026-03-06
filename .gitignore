@@ -17,3 +17,6 @@ Thumbs.db
 .env
 .env.local
 *.local
+
+# Blog drafts (local only)
+blog/

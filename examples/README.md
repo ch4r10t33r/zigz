@@ -16,7 +16,9 @@ zig build prover_verifier_demo && ./zig-out/bin/prover_verifier_demo
 
 ## Fibonacci: End-to-End zkVM Demo
 
-The Fibonacci example mirrors [SP1's fibonacci program](https://github.com/succinctlabs/sp1/blob/main/examples/fibonacci/program/src/main.rs).
+The Fibonacci example mirrors [SP1's fibonacci example](https://github.com/succinctlabs/sp1/tree/main/examples/fibonacci).
+Both follow the same pattern: a guest program compiles to a RISC-V ELF; a host loads the ELF,
+proves its execution, and verifies the proof.
 
 ### Architecture comparison
 
@@ -24,22 +26,47 @@ The Fibonacci example mirrors [SP1's fibonacci program](https://github.com/succi
 |---|---|---|
 | Guest language | Rust | Zig |
 | Guest target | `riscv32im-succinct-zkvm-elf` | `riscv64-freestanding` |
-| Host proves | `sp1_sdk::prove(ELF, input)` | `zigz::Prover::prove(elf_bytes, ...)` |
-| Host verifies | `sp1_sdk::verify(proof, ELF)` | `zigz::Verifier::verify(proof, elf_bytes)` |
+| Read from host | `sp1_zkvm::io::read::<T>()` | `io.read(T)` (from `zigz_io`) |
+| Write to host | `sp1_zkvm::io::commit(&val)` | `io.commit(val)` (from `zigz_io`) |
+| Host proves | `sp1_sdk::ProverClient::prove(ELF, stdin)` | `zigz.Prover.prove(elf_bytes, ..., input)` |
+| Host verifies | `sp1_sdk::ProverClient::verify(proof, vk)` | `zigz.Verifier.verify(proof, elf_bytes)` |
+| Public outputs | `sp1_sdk::SP1PublicValues` | `proof.public_io.outputs` |
 
 ### Files
 
 - **`fibonacci_guest/src/main.zig`** — the guest program that runs *inside* the VM
-- **`fibonacci.zig`** — the host that proves and verifies the guest's execution
+- **`fibonacci.zig`** — the host that provides input, proves, and verifies
+- **`../src/io.zig`** — the `zigz_io` package imported by the guest
 
 ### How it works
 
-1. `zig build fibonacci` cross-compiles `fibonacci_guest` to a RISC-V ELF and embeds it
-   into the host binary at compile time via `@embedFile`.
-2. The host loads the ELF with `zigz.elf.load()`, extracting the entry PC and PT_LOAD segments.
-3. The prover runs the guest inside the VM, recording an execution trace.
-4. Sumcheck + Lasso + Merkle commitments produce a succinct proof.
-5. The verifier checks the proof in O(log steps) — without re-executing.
+1. `zig build fibonacci` cross-compiles `fibonacci_guest` to a RISC-V ELF (in `zig-out/bin/`).
+2. The host locates and reads the ELF at runtime, then calls `zigz.elf.load()` to extract
+   the entry PC and PT_LOAD segments.
+3. The host passes `n` to the prover via an input tape (`input: &[_]u64{n}`).
+4. Inside the VM, the guest reads `n` with `io.read(u64)`, computes fib(n) and fib(n+1),
+   then calls `io.commit(a)` and `io.commit(b)` to write public outputs.
+5. Sumcheck + Lasso + Merkle commitments produce a succinct proof.
+6. Committed values appear in `proof.public_io.outputs` — no register inspection needed.
+7. The verifier checks the proof in O(log steps) — without re-executing.
+
+### Guest I/O (`zigz_io`)
+
+The `zigz_io` package (`src/io.zig`) is the zigz equivalent of `sp1_zkvm::io`. Import it in any
+freestanding guest program:
+
+```zig
+const io = @import("zigz_io");
+
+export fn _start() noreturn {
+    const n = io.read(u64);   // host input tape  → ECALL a7=2
+    io.commit(result);         // public output tape → ECALL a7=1
+    asm volatile ("ebreak");
+    unreachable;
+}
+```
+
+The host receives committed values in `proof.public_io.outputs[]` after proving.
 
 ---
 

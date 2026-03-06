@@ -67,6 +67,7 @@ pub fn Prover(comptime F: type) type {
         /// - initial_regs: Initial register values (optional)
         /// - max_steps: Maximum execution steps (for safety)
         /// - segments: If set, VM is initialized from ELF PT_LOAD segments; otherwise program is loaded at entry_pc
+        /// - input: Host-provided input tape consumed by the guest via io.read() (optional)
         ///
         /// Returns: Complete proof or error
         pub fn prove(
@@ -76,6 +77,7 @@ pub fn Prover(comptime F: type) type {
             initial_regs: ?[]const u64,
             max_steps: usize,
             segments: ?[]const elf_mod.Segment,
+            input: ?[]const u64,
         ) !Proof {
             std.debug.print("\n=== zkVM Prover ===\n", .{});
             std.debug.print("Field: {s} (modulus = {d})\n", .{ @typeName(F), F.MODULUS });
@@ -113,9 +115,9 @@ pub fn Prover(comptime F: type) type {
             std.debug.print("\n[1/6] Executing program...\n", .{});
 
             var vm_state: VMState = if (segments) |segs|
-                try VMState.initFromSegments(self.allocator, segs, entry_pc)
+                try VMState.initFromSegments(self.allocator, segs, entry_pc, input)
             else
-                try VMState.init(self.allocator, program, entry_pc);
+                try VMState.init(self.allocator, program, entry_pc, input);
             defer vm_state.deinit();
 
             // Initialize registers if provided
@@ -536,6 +538,14 @@ pub fn Prover(comptime F: type) type {
                 final_regs[i] = vm_state.regs.read(@intCast(i));
             }
 
+            // Copy committed outputs from the guest's io.commit() calls.
+            var outputs: ?[]u64 = null;
+            if (vm_state.output_tape.items.len > 0) {
+                const out = try proof.allocator.alloc(u64, vm_state.output_tape.items.len);
+                @memcpy(out, vm_state.output_tape.items);
+                outputs = out;
+            }
+
             proof.public_io = PublicIO{
                 .program_hash = program_hash,
                 .initial_pc = entry_pc,
@@ -544,6 +554,7 @@ pub fn Prover(comptime F: type) type {
                 .final_regs = final_regs,
                 .num_steps = vm_state.trace.steps.items.len,
                 .initial_memory = null, // TODO: Support initial memory state
+                .outputs = outputs,
             };
         }
     };
@@ -581,7 +592,7 @@ test "prover: simple program proof" {
     };
 
     // Generate proof
-    var proof = try prover.prove(&program, 0x1000, null, 100, null);
+    var proof = try prover.prove(&program, 0x1000, null, 100, null, null);
     defer proof.deinit();
 
     // Verify proof structure
@@ -607,7 +618,7 @@ test "prover: proof size estimation" {
         0x00, 0x00, 0x00, 0x00, // Halt
     };
 
-    var proof = try prover.prove(&program, 0x1000, null, 100, null);
+    var proof = try prover.prove(&program, 0x1000, null, 100, null, null);
     defer proof.deinit();
 
     const size = proof.estimateSize();

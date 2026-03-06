@@ -232,6 +232,16 @@ pub fn BinarySerializer(comptime F: type) type {
             }
 
             try writer.writeInt(u64, @intCast(public_io.num_steps), .little);
+
+            // Committed outputs (io.commit values)
+            if (public_io.outputs) |out| {
+                try writer.writeInt(u32, @intCast(out.len), .little);
+                for (out) |val| {
+                    try writer.writeInt(u64, val, .little);
+                }
+            } else {
+                try writer.writeInt(u32, 0, .little);
+            }
         }
 
         fn readPublicIO(allocator: std.mem.Allocator, reader: anytype) !proof_mod.PublicIO {
@@ -267,6 +277,18 @@ pub fn BinarySerializer(comptime F: type) type {
 
             public_io.num_steps = @intCast(try reader.readInt(u64, .little));
             public_io.initial_memory = null;
+
+            // Committed outputs (io.commit values)
+            const num_outputs = try reader.readInt(u32, .little);
+            if (num_outputs > 0) {
+                const out = try allocator.alloc(u64, num_outputs);
+                for (out) |*val| {
+                    val.* = try reader.readInt(u64, .little);
+                }
+                public_io.outputs = out;
+            } else {
+                public_io.outputs = null;
+            }
 
             return public_io;
         }

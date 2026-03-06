@@ -102,9 +102,9 @@ fn cmdExecute(allocator: std.mem.Allocator, args: []const []const u8) !void {
     var vm: zigz.VMState = if (zigz.elf.isElf(program)) blk: {
         const load_result = try zigz.elf.load(allocator, program);
         defer allocator.free(load_result.segments_owned);
-        break :blk try zigz.VMState.initFromSegments(allocator, load_result.segments, load_result.entry_pc);
+        break :blk try zigz.VMState.initFromSegments(allocator, load_result.segments, load_result.entry_pc, null);
     } else blk: {
-        break :blk try zigz.VMState.init(allocator, program, default_entry);
+        break :blk try zigz.VMState.init(allocator, program, default_entry, null);
     };
     defer vm.deinit();
 
@@ -149,7 +149,7 @@ fn cmdProve(allocator: std.mem.Allocator, args: []const []const u8) !void {
     defer prover.deinit();
 
     const start = std.time.milliTimestamp();
-    var proof = try prover.prove(program, entry_pc, null, max_steps, segments);
+    var proof = try prover.prove(program, entry_pc, null, max_steps, segments, null);
     defer proof.deinit();
     const prove_ms = std.time.milliTimestamp() - start;
 

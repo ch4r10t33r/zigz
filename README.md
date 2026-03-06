@@ -2,6 +2,10 @@
 
 **A zero-knowledge virtual machine written in Zig, inspired by Jolt's lookup-based proving architecture.**
 
+> ⚠️ **Experimental software.** zigz is under active development and has not been audited.
+> Do **not** use it in production systems. APIs may change without notice.
+> Use at your own risk.
+
 ---
 
 ## Overview
@@ -34,6 +38,7 @@ zigz is a zkVM (zero-knowledge virtual machine) that allows you to generate succ
 - ✅ **CLI**: `execute`, `prove`, `verify` with file I/O
 - ✅ **ELF loading**: load RISC-V ELF (entry + PT_LOAD segments); no manual `--entry` for ELF inputs
 - ✅ **Project workflow**: `zigz new` (template) and `zigz build` (RISC-V ELF)
+- ✅ **Guest I/O** (`zigz_io`): `io.read(T)` / `io.commit(value)` for host↔guest communication — no inline asm required (inspired by SP1's `sp1_zkvm::io`)
 
 ---
 
@@ -73,7 +78,7 @@ See [MODULES.md](MODULES.md) for detailed architecture documentation.
 
 ## RISC-V ISA Support
 
-zigz implements a **production-ready subset of the RISC-V ISA**, sufficient for running practical programs in the zkVM.
+zigz implements a **practical subset of the RISC-V ISA**, sufficient for running programs in the zkVM.
 
 ### ✅ Implemented Extensions
 
@@ -323,7 +328,10 @@ The template binary is a full RISC-V Linux executable; for minimal provable prog
 
 **Current Phase**: Phase 9 - Full Verifier ✅ **COMPLETE!**
 
-zigz now has a **complete, production-ready prover-verifier implementation**! You can execute RISC-V programs, generate zero-knowledge proofs, and verify them with O(log n) verification time. The system includes critical security fixes for Fiat-Shamir vulnerabilities and comprehensive integration tests.
+zigz has a complete end-to-end prover-verifier implementation. You can execute RISC-V programs, generate zero-knowledge proofs, and verify them with O(log n) verification time.
+
+> ⚠️ **This is experimental research software.** The proof system has not been audited
+> and should not be relied upon for security-sensitive applications.
 
 **What's Working:**
 - ✅ End-to-end proof generation and verification
@@ -334,7 +342,7 @@ zigz now has a **complete, production-ready prover-verifier implementation**! Yo
 - ✅ Binary proof serialization
 - ✅ Comprehensive test suite (10 integration tests)
 
-**Next Steps**: Performance optimization, additional ISA extensions (optional: RV64A for atomics), and production hardening.
+**Next Steps**: Performance optimization, additional ISA extensions (optional: RV64A for atomics), security audit.
 
 ### Implementation Roadmap
 
@@ -443,8 +451,10 @@ zigz/
 │   ├── prover/        # Full prover integration
 │   ├── verifier/      # Full verifier integration
 │   └── main.zig       # CLI entry point
-├── examples/          # Example programs (sumcheck demos)
+├── examples/          # Example programs (Fibonacci zkVM demo, sumcheck demos)
+│   └── fibonacci_guest/   # RISC-V guest program (cross-compiled to ELF)
 ├── tests/             # Integration tests
+├── src/io.zig         # zigz_io: guest I/O primitives (io.read / io.commit)
 ├── build.zig          # Build configuration
 ├── build.zig.zon      # Package manifest
 ├── MODULES.md         # Architecture documentation
@@ -526,8 +536,9 @@ External dependencies are kept minimal to reduce complexity and improve auditabi
 
 ## Acknowledgments
 
-- **Jolt Team** ([a16z crypto](https://a16zcrypto.com/)): For the innovative zkVM architecture
+- **Jolt Team** ([a16z crypto](https://a16zcrypto.com/)): For the innovative lookup-based zkVM architecture that zigz is built on
 - **Justin Thaler**: For the Lasso lookup argument and sumcheck research
+- **SP1 / Succinct Labs** ([succinctlabs/sp1](https://github.com/succinctlabs/sp1)): For pioneering the guest-program model where Zig/Rust programs compile to RISC-V ELFs and are proven by a zkVM host. The `zigz_io` package (`io.read` / `io.commit`) and the Fibonacci example are directly inspired by SP1's `sp1_zkvm::io` and its [fibonacci example](https://github.com/succinctlabs/sp1/tree/main/examples/fibonacci)
 - **RISC-V Foundation**: For the open ISA specification
 - **Zig Community**: For the excellent programming language and ecosystem
 

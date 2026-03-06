@@ -68,6 +68,65 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(example_exe);
     }
 
+    // -- fibonacci example: cross-compiles a Zig guest to RISC-V, then proves it --
+    //
+    // This is the zigz equivalent of SP1's fibonacci example:
+    //   SP1: write Rust guest → compile → sp1_sdk::prove(ELF)
+    //   zigz: write Zig guest → compile → zigz::Prover::prove(elf_bytes)
+    //
+    // The guest (examples/fibonacci_guest/src/main.zig) targets riscv64-freestanding.
+    // Both guest and host are installed to zig-out/bin/; the host locates the
+    // guest at runtime via std.fs.selfExeDirPathAlloc().
+    // Restrict the guest to rv64im only — zigz's VM supports RV64I+M.
+    // Disable C (compressed), A (atomics), F/D (float), Zicsr, Zifencei.
+    const riscv_target = b.resolveTargetQuery(.{
+        .cpu_arch = .riscv64,
+        .os_tag = .freestanding,
+        .abi = .none,
+        .cpu_model = .{ .explicit = &std.Target.riscv.cpu.generic_rv64 },
+        .cpu_features_add = std.Target.riscv.featureSet(&.{.m}),
+        .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zifencei }),
+    });
+
+    // zigz_io module — importable by freestanding RISC-V guest programs.
+    // Provides commit() and read() via ECALL, no inline asm in guest code.
+    const zigz_io_mod = b.createModule(.{
+        .root_source_file = b.path("src/io.zig"),
+        .target = riscv_target,
+        .optimize = .ReleaseSmall,
+    });
+
+    const fibonacci_guest = b.addExecutable(.{
+        .name = "fibonacci_guest",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/fibonacci_guest/src/main.zig"),
+            .target = riscv_target,
+            .optimize = .ReleaseSmall,
+            .imports = &.{
+                .{ .name = "zigz_io", .module = zigz_io_mod },
+            },
+        }),
+    });
+    b.installArtifact(fibonacci_guest);
+
+    const fibonacci_exe = b.addExecutable(.{
+        .name = "fibonacci",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/fibonacci.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "zigz", .module = zigz_mod },
+            },
+        }),
+    });
+    b.installArtifact(fibonacci_exe);
+
+    const fibonacci_run = b.addRunArtifact(fibonacci_exe);
+    fibonacci_run.step.dependOn(b.getInstallStep());
+    const fibonacci_step = b.step("fibonacci", "Run the Fibonacci zkVM example (guest + host)");
+    fibonacci_step.dependOn(&fibonacci_run.step);
+
     // -- tests --
     const unit_tests = b.addTest(.{
         .root_module = b.createModule(.{

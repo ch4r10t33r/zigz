@@ -20,7 +20,7 @@ test "rv64m: MUL (multiply lower 64 bits)" {
         0x33, 0x06, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -44,7 +44,7 @@ test "rv64m: MULH (signed × signed, upper 64 bits)" {
         0x33, 0x16, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -69,7 +69,7 @@ test "rv64m: MULHU (unsigned × unsigned, upper 64 bits)" {
         0x33, 0x36, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -95,7 +95,7 @@ test "rv64m: DIV (signed division)" {
         0x33, 0x46, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -119,7 +119,7 @@ test "rv64m: DIV by zero" {
         0x33, 0x46, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -144,7 +144,7 @@ test "rv64m: DIVU (unsigned division)" {
         0x33, 0x56, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -168,7 +168,7 @@ test "rv64m: REM (signed remainder)" {
         0x33, 0x66, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -192,7 +192,7 @@ test "rv64m: REMU (unsigned remainder)" {
         0x33, 0x76, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -216,7 +216,7 @@ test "rv64m: MULW (multiply word)" {
         0x3B, 0x06, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -242,7 +242,7 @@ test "rv64m: MULW overflow" {
         0x3B, 0x06, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -267,7 +267,7 @@ test "rv64m: DIVW (signed word division)" {
         0x3B, 0x46, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -291,7 +291,7 @@ test "rv64m: DIVUW (unsigned word division)" {
         0x3B, 0x56, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -315,7 +315,7 @@ test "rv64m: REMW (signed word remainder)" {
         0x3B, 0x66, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -339,7 +339,7 @@ test "rv64m: REMUW (unsigned word remainder)" {
         0x3B, 0x76, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -363,7 +363,7 @@ test "rv64m: Negative number multiplication" {
         0x33, 0x06, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(5);
@@ -396,7 +396,7 @@ test "rv64m: Large number multiplication" {
         0x33, 0x6D, 0xB5, 0x02,
     };
 
-    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try zigz.VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(7);

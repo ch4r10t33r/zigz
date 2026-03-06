@@ -10,6 +10,11 @@ const MemoryAccess = @import("trace.zig").MemoryAccess;
 const AccessType = @import("trace.zig").AccessType;
 const instruction_table = @import("../isa/instruction_table.zig");
 
+/// ECALL numbers for the zigz I/O protocol.
+/// Guests use these via `zigz_io.commit()` / `zigz_io.read()`.
+pub const ECALL_COMMIT: u64 = 1;
+pub const ECALL_READ: u64 = 2;
+
 /// RISC-V VM State Machine
 ///
 /// Executes RISC-V RV64I instructions and records an execution trace
@@ -18,6 +23,7 @@ const instruction_table = @import("../isa/instruction_table.zig");
 /// - Sparse byte-addressable memory
 /// - Program counter (PC)
 /// - Execution trace for proving
+/// - I/O tapes for host↔guest communication (via ECALL)
 ///
 /// The execution model is:
 /// 1. Fetch instruction at PC
@@ -45,16 +51,29 @@ pub const VMState = struct {
     /// Halt flag (set by EBREAK or errors)
     halted: bool,
 
+    /// Input tape — values the host provides; consumed by ECALL_READ.
+    /// Slice is borrowed (caller owns it); not freed in deinit.
+    input_tape: []const u64,
+
+    /// Current read position in input_tape.
+    input_pos: usize,
+
+    /// Output tape — values committed by the guest via ECALL_COMMIT.
+    /// Owned by this VMState; freed in deinit.
+    output_tape: std.ArrayList(u64),
+
     /// Allocator
     allocator: std.mem.Allocator,
 
     const Self = @This();
 
-    /// Initialize VM with program loaded at given address
+    /// Initialize VM with program loaded at given address.
+    /// `input` is an optional host-provided input tape for io.read().
     pub fn init(
         allocator: std.mem.Allocator,
         program: []const u8,
         start_pc: u64,
+        input: ?[]const u64,
     ) !Self {
         var memory = Memory.init(allocator);
         try memory.loadProgram(start_pc, program);
@@ -66,16 +85,20 @@ pub const VMState = struct {
             .trace = ExecutionTrace.init(allocator),
             .step_count = 0,
             .halted = false,
+            .input_tape = input orelse &.{},
+            .input_pos = 0,
+            .output_tape = .{},
             .allocator = allocator,
         };
     }
 
     /// Initialize VM from ELF PT_LOAD segments (e.g. from elf.load()).
-    /// entry_pc is the initial program counter (e_entry).
+    /// `input` is an optional host-provided input tape for io.read().
     pub fn initFromSegments(
         allocator: std.mem.Allocator,
         segments: []const elf.Segment,
         entry_pc: u64,
+        input: ?[]const u64,
     ) !Self {
         var memory = Memory.init(allocator);
         for (segments) |seg| {
@@ -88,6 +111,9 @@ pub const VMState = struct {
             .trace = ExecutionTrace.init(allocator),
             .step_count = 0,
             .halted = false,
+            .input_tape = input orelse &.{},
+            .input_pos = 0,
+            .output_tape = .{},
             .allocator = allocator,
         };
     }
@@ -95,6 +121,7 @@ pub const VMState = struct {
     pub fn deinit(self: *Self) void {
         self.memory.deinit();
         self.trace.deinit();
+        self.output_tape.deinit(self.allocator);
     }
 
     /// Execute a single instruction and record in trace
@@ -538,9 +565,25 @@ pub const VMState = struct {
         // SYSTEM instructions include ECALL, EBREAK, CSR operations
         if (inst.funct3 == 0) {
             if (inst.imm == 0) {
-                // ECALL - Environment call (syscall)
-                // For now, we'll just continue execution
-                // In a full implementation, this would trigger syscall handling
+                // ECALL — dispatch on a7 (x17), the syscall number register.
+                // This implements the zigz I/O protocol used by zigz_io guests.
+                const syscall = self.regs.read(17); // a7
+                switch (syscall) {
+                    ECALL_COMMIT => {
+                        // Append a0 (x10) to the public output tape.
+                        try self.output_tape.append(self.allocator, self.regs.read(10));
+                    },
+                    ECALL_READ => {
+                        // Pop the next word from the input tape into a0 (x10).
+                        if (self.input_pos < self.input_tape.len) {
+                            self.regs.write(10, self.input_tape[self.input_pos]);
+                            self.input_pos += 1;
+                        } else {
+                            self.regs.write(10, 0); // underflow returns 0
+                        }
+                    },
+                    else => {}, // unknown syscall: no-op (forward-compatible)
+                }
                 return self.pc + 4;
             } else if (inst.imm == 1) {
                 // EBREAK - Debugger breakpoint / halt
@@ -566,7 +609,7 @@ test "vm: execute ADDI instruction" {
         0x13, 0x05, 0xA0, 0x02, // ADDI x10, x0, 42 (little endian)
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.step();
@@ -587,7 +630,7 @@ test "vm: execute ADD instruction" {
         0x33, 0x06, 0xB5, 0x00, // ADD x12, x10, x11
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(3);
@@ -607,7 +650,7 @@ test "vm: execute LW/SW instructions" {
         0x83, 0x25, 0x00, 0x00, // LW x11, 0(x0)
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(3);
@@ -629,7 +672,7 @@ test "vm: execute BEQ branch" {
         0x93, 0x06, 0xA0, 0x02, // ADDI x13, x0, 42
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(10);
@@ -644,7 +687,7 @@ test "vm: trace records all steps" {
         0x93, 0x05, 0xB0, 0x03, // ADDI x11, x0, 59
     };
 
-    var vm = try VMState.init(testing.allocator, &program, 0x1000);
+    var vm = try VMState.init(testing.allocator, &program, 0x1000, null);
     defer vm.deinit();
 
     try vm.run(2);

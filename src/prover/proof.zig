@@ -37,10 +37,15 @@ pub const PublicIO = struct {
     /// Memory initialization (sparse representation)
     initial_memory: ?std.AutoHashMap(u64, u8),
 
+    /// Values committed by the guest via io.commit() / ECALL_COMMIT.
+    /// Nil when no values were committed.
+    outputs: ?[]const u64,
+
     pub fn deinit(self: *PublicIO, allocator: std.mem.Allocator) void {
         if (self.initial_regs) |regs| allocator.free(regs);
         if (self.final_regs) |regs| allocator.free(regs);
         if (self.initial_memory) |*mem| mem.deinit();
+        if (self.outputs) |out| allocator.free(out);
     }
 };
 

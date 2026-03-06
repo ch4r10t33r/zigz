@@ -66,7 +66,7 @@ test "integration: basic end-to-end proof verification" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     std.debug.print("Proof generated: {d} steps\n", .{proof.metadata.num_steps});
@@ -100,7 +100,7 @@ test "integration: serialization roundtrip preserves proof validity" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     // Serialize
@@ -143,7 +143,7 @@ test "integration: wrong program hash causes rejection" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     // Try to verify with different program
@@ -187,7 +187,7 @@ test "integration: various program sizes verify correctly" {
         var prover = try zigz.Prover(F).init(allocator, 0);
         defer prover.deinit();
 
-        var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+        var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
         defer proof.deinit();
 
         std.debug.print("  Proof size: ~{d} bytes\n", .{proof.estimateSize()});
@@ -222,13 +222,13 @@ test "integration: transcript generates deterministic challenges" {
     var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
-    var proof1 = try prover1.prove(program, entry_pc, null, 1 << 20, null);
+    var proof1 = try prover1.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof1.deinit();
 
     var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
-    var proof2 = try prover2.prove(program, entry_pc, null, 1 << 20, null);
+    var proof2 = try prover2.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof2.deinit();
 
     // Transcripts should generate same challenges
@@ -261,7 +261,7 @@ test "integration: tampered commitment causes rejection" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     // Tamper with a commitment
@@ -299,7 +299,7 @@ test "integration: opening claims are bound to transcript" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     // Tamper with an opening claim (evaluation value)
@@ -344,13 +344,13 @@ test "integration: public inputs bound to transcript" {
     var prover1 = try zigz.Prover(F).init(allocator, 0);
     defer prover1.deinit();
 
-    var proof1 = try prover1.prove(program, 0x1000, null, 1 << 20, null);
+    var proof1 = try prover1.prove(program, 0x1000, null, 1 << 20, null, null);
     defer proof1.deinit();
 
     var prover2 = try zigz.Prover(F).init(allocator, 0);
     defer prover2.deinit();
 
-    var proof2 = try prover2.prove(program, 0x2000, null, 1 << 20, null);
+    var proof2 = try prover2.prove(program, 0x2000, null, 1 << 20, null, null);
     defer proof2.deinit();
 
     // Proofs should be different because initial PC is bound to transcript
@@ -394,7 +394,7 @@ test "integration: proof size scales logarithmically" {
         var prover = try zigz.Prover(F).init(allocator, 0);
         defer prover.deinit();
 
-        var proof = try prover.prove(program, 0x1000, null, 1 << 20, null);
+        var proof = try prover.prove(program, 0x1000, null, 1 << 20, null, null);
         defer proof.deinit();
 
         const proof_size = proof.estimateSize();
@@ -443,7 +443,7 @@ test "integration: performance benchmark" {
     var prover = try zigz.Prover(F).init(allocator, 0);
     defer prover.deinit();
 
-    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null);
+    var proof = try prover.prove(program, entry_pc, null, 1 << 20, null, null);
     defer proof.deinit();
 
     const prove_time_ns = timer.read();

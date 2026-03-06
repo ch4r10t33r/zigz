@@ -1,19 +1,47 @@
-# Sumcheck Protocol Examples
+# zigz Examples
 
-This directory contains educational examples demonstrating the sumcheck protocol implementation in zigz.
+This directory contains examples for zigz — from the core sumcheck protocol up to the full
+zkVM prove-verify workflow.
 
-## Running the Examples
-
-From the project root:
+## Quick Start
 
 ```bash
-# Compile and run an example
-zig build-exe examples/sumcheck_basic.zig --dep hash-zig -p .
-./sumcheck_basic
+# Run the end-to-end Fibonacci demo (guest + host, like SP1's fibonacci example)
+zig build fibonacci
 
-# Or run directly with zig
-zig run examples/sumcheck_basic.zig --dep hash-zig
+# Run all other examples
+zig build sumcheck_basic && ./zig-out/bin/sumcheck_basic
+zig build prover_verifier_demo && ./zig-out/bin/prover_verifier_demo
 ```
+
+## Fibonacci: End-to-End zkVM Demo
+
+The Fibonacci example mirrors [SP1's fibonacci program](https://github.com/succinctlabs/sp1/blob/main/examples/fibonacci/program/src/main.rs).
+
+### Architecture comparison
+
+| | SP1 | zigz |
+|---|---|---|
+| Guest language | Rust | Zig |
+| Guest target | `riscv32im-succinct-zkvm-elf` | `riscv64-freestanding` |
+| Host proves | `sp1_sdk::prove(ELF, input)` | `zigz::Prover::prove(elf_bytes, ...)` |
+| Host verifies | `sp1_sdk::verify(proof, ELF)` | `zigz::Verifier::verify(proof, elf_bytes)` |
+
+### Files
+
+- **`fibonacci_guest/src/main.zig`** — the guest program that runs *inside* the VM
+- **`fibonacci.zig`** — the host that proves and verifies the guest's execution
+
+### How it works
+
+1. `zig build fibonacci` cross-compiles `fibonacci_guest` to a RISC-V ELF and embeds it
+   into the host binary at compile time via `@embedFile`.
+2. The host loads the ELF with `zigz.elf.load()`, extracting the entry PC and PT_LOAD segments.
+3. The prover runs the guest inside the VM, recording an execution trace.
+4. Sumcheck + Lasso + Merkle commitments produce a succinct proof.
+5. The verifier checks the proof in O(log steps) — without re-executing.
+
+---
 
 ## Examples Overview
 
